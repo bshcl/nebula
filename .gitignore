@@ -1,0 +1,65 @@
+# Unity项目常规忽略项
+[Nn]ebula-Unity-Client/[Ll]ibrary/
+[Nn]ebula-Unity-Client/[Tt]emp/
+[Nn]ebula-Unity-Client/[Oo]bj/
+[Nn]ebula-Unity-Client/[Ll]ogs/
+[Nn]ebula-Unity-Client/Build/
+[Nn]ebula-Unity-Client/Builds/
+[Nn]ebula-Unity-Client/[Uu]ser[Ss]ettings/
+[Nn]ebula-Unity-Client/.vs/
+[Nn]ebula-Unity-Client/.idea/
+[Nn]ebula-Unity-Client/.vscode/
+
+# Unity常见忽略的Asset文件
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# 资源文件
+*.png
+*.jpg
+*.jpeg
+*.fbx
+*.mat
+*.prefab
+*.unity
+*.asset
+*.wav
+*.mp3
+*.ogg
+*.tga
+*.dds
+*.exr
+*.psd
+
+# Nebula-API 非必要文件夹（如虚拟环境和临时文件）
+nebula-api/__pycache__/
+nebula-api/.vscode/
+nebula-api/.idea/
+nebula-api/.pytest_cache/
+nebula-api/.mypy_cache/
+nebula-api/.env
+nebula-api/env/
+nebula-api/venv/
+nebula-api/.DS_Store
+nebula-api/*.pyc
+nebula-api/*.pyo
+nebula-api/*.log
+
+# 系统生成文件
+.DS_Store
+Thumbs.db

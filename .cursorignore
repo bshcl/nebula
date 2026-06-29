@@ -1,0 +1,15 @@
+# 屏蔽 Unity 自动生成的巨大数据
+Nebula-Unity-Client/Library/
+Nebula-Unity-Client/Temp/
+Nebula-Unity-Client/Obj/
+Nebula-Unity-Client/Logs/
+
+# 屏蔽所有图片、模型、音频等 AI 读不懂的资源
+*.meta
+*.png
+*.jpg
+*.fbx
+*.mat
+*.prefab
+*.unity
+*.asset
