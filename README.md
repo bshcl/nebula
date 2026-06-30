@@ -1,5 +1,6 @@
 "Detailed technical implementation is available on Zenn.dev"
-https://zenn.dev/tyora/articles/dc4610389adae0 #zenn
+
+https://zenn.dev/tyora/articles/dc4610389adae0
 
 ## 🚀 技術のハイライト / 技术亮点
 
