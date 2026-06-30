@@ -1,3 +1,5 @@
+"Detailed technical implementation is available on Zenn.dev"
+
 ## 🚀 技術のハイライト / 技术亮点
 
 ---
