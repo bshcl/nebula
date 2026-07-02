@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
 
                 yield
     except Exception:
-        logger.exception("MCP server startup faileds")
+        logger.exception("MCP server startup failed")
         raise
 
 
