@@ -1,20 +1,25 @@
+from collections.abc import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
-# 数据库文件的路径
-SQLALCHEMY_DATABASE_URL = "sqlite:///./app/data/nebula.db"
+from app.core.config import get_logger, settings
 
-# 创建数据库引擎
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+logger = get_logger(__name__)
+
+logger.info("Connecting to database at %s", settings.DATABASE_URL)
+
+engine: Engine = create_engine(
+    settings.DATABASE_URL,
+    connect_args={"check_same_thread": False},
 )
 
-# 创建数据库会话
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-# 依赖项：获取数据库会话
-def get_db():
+def get_db() -> Generator[Session, None, None]:
+    """Yield a SQLAlchemy session and ensure it is closed after use."""
     db = SessionLocal()
     try:
         yield db
