@@ -1,110 +1,112 @@
 from langchain_core.tools import tool
 from app.core import mcp_manager
+from app.core.config import get_logger, settings
 from app.core.rag_engine import rag_engine
 
-# ==========================================
-# 第一组：地理感知工具 (World Perception)
-# 职责：通过 MCP 协议连接真实世界地图
-# ==========================================
+logger = get_logger(__name__)
 
 
 class MapTools:
+    """Geographic perception tools backed by the Google Maps MCP server."""
+
     @staticmethod
     @tool
-    async def search_nearby_places(query: str):
+    async def search_nearby_places(query: str) -> str:
         """
-        在地图上搜索地点、餐厅或建筑。
-        参数 query: 具体的搜索关键词，例如 '涩谷车站附近的拉面店'。
+        Search for places, restaurants, or landmarks on the map.
+        Args:
+            query: Search keywords, e.g. 'ramen near shibuya Station'
         """
-        print(f"🛠️ [MCP] 正在执行地图搜索: {query}")
+        logger.debug(f"MCP map search: quert={query}")
 
         if not mcp_manager.mcp_session:
-            return "错误：地图服务连接已断开，请稍后再试。"
+            return "Error: Maps service is disconnected. Please try again later."
 
         try:
-            # 💡 原子化逻辑：只负责透传最核心的 query
-            result = await mcp_manager.mcp_session.call_tool(
+            result = await mcp_manager.mcp_session.call_toll(
                 "maps_search_places", {"query": query}
             )
-            # 截断内容防止 Token 溢出
-            return str(result.content)[:2000]
+            return str(result.content)[: settings.TOOL_RESULT_MAX_CHARS]
         except Exception as e:
-            return f"地图搜索失败：{str(e)}"
+            logger.warning(f"Maps search failed: {e}")
+            return f"Maps search failed: {e}"
 
     @staticmethod
     @tool
-    async def get_place_details(place_id: str):
+    async def get_place_details(place_id: str) -> str:
         """
-        获取特定地点的详细信息。
-        参数 place_id: 地点的唯一标识符（从搜索结果中获得）。
+        Fetch detailed information for a specific place.
+        Args:
+            place_id: Unique place identifier from search results.
         """
         if not mcp_manager.mcp_session:
-            return "错误：地图服务未就绪。"
+            return "Error: Maps service is not ready."
 
         try:
             result = await mcp_manager.mcp_session.call_tool(
-                "maps_place_details", {"place_id": place_id}
+                "maps_get_place_details", {"place_id": place_id}
             )
-            return str(result.content)[:2000]
+            return str(result.content)[: settings.TOOL_RESULT_MAX_CHARS]
         except Exception as e:
-            return f"获取地点详情失败：{str(e)}"
-
-
-# ==========================================
-# 第二组：游戏逻辑工具 (Game Interaction)
-# 职责：干预游戏世界，修改玩家背包或状态
-# ==========================================
+            logger.warning(f"Place details lookup failed: {e}")
+            return f"Failed to fetch place details: {e}"
 
 
 class InteractionTools:
+    """In-game interaction tools that modify player state or inventory."""
+
     @staticmethod
     @tool
-    def send_gift(item_name: str):
+    def send_gift(item_name: str) -> str:
         """
-        当玩家好感度(mood) >= 90 且玩家索要礼物时，调用此工具送给玩家礼物。
-        参数 item_name: 礼物的名称。
+        Send a gift to the player when mood >= 90 and the player asks for one.
+        Args:
+            item_name: Name of the gift item to grant.
         """
-        # 💡 原子化逻辑：这里未来可以接入数据库 db_service.add_item_to_inventory
-        print(f"\n🎁 [系统指令] 触发送礼逻辑: {item_name}")
-        return f"系统消息：成功发放了 {item_name}。请在回复中告知玩家已送达。"
+        logger.info(f"Gift triggered: item={item_name}")
+        return (
+            f"System message: Successfully granted {item_name}."
+            "Confirm delivery to the player in your reply."
+        )
 
 
 class WorldKnowledgeTools:
+    """RAG-backed tools for official Nebula world lore and canonical information."""
+
     @staticmethod
     @tool
-    async def query_nebula_lore(query: str):
+    async def query_nebula_lore(query: str) -> str:
         """
-        查询关于星云系统（Nebula System）、创始人TYORA、NPC Sakura背景或世界规则的官方设定。
+        Query official lore about Nebula System, TYORA, Sakura, or world rules.
+        Args:
+            query: Topic or question to look up in the knowledge base.
         """
         retriever = rag_engine.get_retriever()
         if not retriever:
-            return "错误：知识库尚未初始化，请联系架构师。"
+            return "Error: RAG engine is not initialized. Please try again later."
 
-        print(f"📚 [RAG] 正在检索知识库: {query}")
-        # 💡 核心动作：异步检索
+        logger.debug(f"RAG lore query: query={query}")
         docs = await retriever.ainvoke(query)
 
         if not docs:
-            return "在设定集中未找到相关记载。"
+            return "No matching entries in the lore codex."
 
-        # 合并检索到的碎片，并加上来源标记
-        context = "\n---\n".join([d.page_content for d in docs])
-        return f"【星云设定集检索结果】：\n{context}"
-
-
-# ==========================================
-# 第三组：环境模拟工具 (Environment Mock)
-# 职责：提供模拟的环境数据（用于测试或保底）
-# ==========================================
+        context = "\n---\n".join([doc.page_content for doc in docs])
+        return f"[Nebula Lore Retrieval Result]\n{context}"
 
 
 class EnvironmentTools:
+    """Mock environment data for testing or fallback scenarios."""
+
     @staticmethod
     @tool
-    def get_weather_mock(city: str):
+    def get_weather_mock(city: str) -> str:
         """
-        获取指定城市的实时天气信息。
-        参数 city: 城市名称。
+        Return mock weather data for a given city (testing/fallback only).
+        Args:
+            city: City name.
         """
-        # 💡 原子化逻辑：纯粹的数据返回
-        return f"{city}当前天气：晴朗，25度。心情指数：极佳。"
+        return (
+            f"Mock weather in {city}: sunny with a temperature of 22°C."
+            "Comfort index: excellent."
+        )

@@ -1,130 +1,139 @@
 import re
-from langgraph.graph import StateGraph, START, END
-from langchain_core.messages import AIMessage, SystemMessage
+from typing import Literal
 
-from app.models.combined_state import CombinedState
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
+from langgraph.graph import END, START, StateGraph
+
+from app.chains.agents import local_llm, soul_llm_cloud
+from app.core.config import get_logger, settings
 from app.core.prompts import SENTIMENT_ANALYZER_PROMPT, SOUL_MANAGER_PROMPT
-from app.chains.agents import soul_llm_cloud, local_llm
+from app.models.combined_state import CombinedState
+
+logger = get_logger(__name__)
+
+WORLD_REPORT_PREFIX = "[World Observer Report]:"
 
 
-# ==========================================
-# 1. 节点逻辑：带降级保护的 World Node
-# ==========================================
-async def call_world_agent(state: CombinedState):
-    from .agents import world_agent_cloud
+async def call_world_agent(state: CombinedState) -> dict[str, list[BaseMessage]]:
+    """Invoke the cloud World Observer agent with graceful degradation."""
+    from app.chains.agents import world_agent_cloud
 
-    print("🌍 [Debug] 正在进入 World Node (尝试云端)...")
+    logger.debug("Entering World node (cloud path)")
 
     if world_agent_cloud is None:
-        return {"messages": [AIMessage(content="【系统警告】：世界感知模块未启动。")]}
-
-    try:
-        # 尝试调用云端 Agent (Gemini/Groq)
-        result = await world_agent_cloud.ainvoke(state)
-        last_msg = result["messages"][-1]
-        last_msg.content = f"【世界观察员报告】：{last_msg.content}"
-        return {"messages": [last_msg]}
-    except Exception as e:
-        print(f"⚠️ [World降级] 云端感知失败: {e}")
-        # 如果云端查不到地图，直接返回一个空报告，不中断程序
         return {
             "messages": [
                 AIMessage(
-                    content="【世界观察员报告】：由于网络波动，暂时无法获取地理信息。"
+                    content="System warning: World perception module is not running."
+                )
+            ]
+        }
+
+    try:
+        result = await world_agent_cloud.ainvoke(state)
+        last_msg = result["messages"][-1]
+        last_msg.content = f"{WORLD_REPORT_PREFIX} {last_msg.content}"
+        return {"messages": [last_msg]}
+    except Exception as exc:
+        logger.warning("World node cloud fallback triggered: %s", exc)
+        return {
+            "messages": [
+                AIMessage(
+                    content=(
+                        f"{WORLD_REPORT_PREFIX} "
+                        "Unable to fetch geographic data due to network issues."
+                    )
                 )
             ]
         }
 
 
-# ==========================================
-# 2. 节点逻辑：带降级保护的 Soul Node
-# ==========================================
-async def call_soul_agent(state: CombinedState):
-    from .agents import soul_agent_cloud
+async def call_soul_agent(state: CombinedState) -> dict[str, list[BaseMessage]]:
+    """Invoke the cloud Soul agent, falling back to local Ollama on failure."""
+    from app.chains.agents import soul_agent
 
-    print("🎭 [Debug] 正在进入 Soul Node...")
+    logger.debug("Entering Soul node")
 
-    # 数据清洗逻辑
-    clean_history = []
-    world_report = "暂无相关地理信息。"
-    for m in state["messages"]:
-        if "【世界观察员报告】" in m.content:
-            world_report = m.content
+    clean_history: list[BaseMessage] = []
+    world_report = "No geographic intelligence available."
+    for message in state["messages"]:
+        if WORLD_REPORT_PREFIX in str(message.content):
+            world_report = str(message.content)
         else:
-            clean_history.append(m)
+            clean_history.append(message)
 
     try:
-        # --- 尝试 A 路径：云端 Agent ---
-        result = await soul_agent_cloud.ainvoke(state)
+        result = await soul_agent.ainvoke(state)
         return {"messages": result["messages"]}
+    except Exception as exc:
+        logger.warning("Soul node cloud fallback — switching to local Ollama: %s", exc)
 
-    except Exception as e:
-        # --- 尝试 B 路径：本地保底 (Ollama) ---
-        print(f"🚨 [Soul降级] 云端大脑宕机，正在唤醒本地 Ollama... 错误: {e}")
-
-        # 注入虚弱信号和离线指令
         offline_instruction = SOUL_MANAGER_PROMPT.format(
             mood=state["mood"], summary=state.get("summary", "")
         )
-        offline_instruction += f"\n\n### 实时世界情报 ###\n{world_report}"
-        offline_instruction += "\n\n注意：你现在处于【离线虚弱模式】，请在回复末尾务必加上 [[SYSTEM:OFFLINE]]。"
+        offline_instruction += f"\n\n### Live World Intel ###\n{world_report}"
+        offline_instruction += (
+            "\n\nNote: You are in [OFFLINE WEAK MODE]. "
+            "Append [[SYSTEM:OFFLINE]] at the end of your reply."
+        )
 
         messages = [SystemMessage(content=offline_instruction)] + clean_history
-
-        # 调用本地模型
         response = await local_llm.ainvoke(messages)
 
-        # 强制补丁：确保信号存在
-        if "[[SYSTEM:OFFLINE]]" not in response.content:
-            response.content += " [[SYSTEM:OFFLINE]]"
+        if "[[SYSTEM:OFFLINE]]" not in str(response.content):
+            response.content = f"{response.content} [[SYSTEM:OFFLINE]]"
 
         return {"messages": [response]}
 
 
-# ==========================================
-# 3. 节点逻辑：情感分析与路由
-# ==========================================
-def analyze_sentiment(state: CombinedState):
-    """情感分析节点：优先尝试云端，失败则默认不改变心情"""
+def analyze_sentiment(state: CombinedState) -> dict[str, int]:
+    """Analyze user sentiment and update NPC mood (cloud-first, silent fallback)."""
     user_input = state["messages"][-1].content
     formatted_prompt = SENTIMENT_ANALYZER_PROMPT.format(user_input=user_input)
 
     try:
         res = soul_llm_cloud.invoke(formatted_prompt)
-        # 处理 Gemini 可能返回的 List 类型 content
         content_text = (
             res.content
             if isinstance(res.content, str)
             else "".join(
-                [p.get("text", "") for p in res.content if isinstance(p, dict)]
+                part.get("text", "") for part in res.content if isinstance(part, dict)
             )
         )
         numbers = re.findall(r"-?\d+", content_text)
         score = int(numbers[0]) if numbers else 0
-    except Exception:
-        print("⚠️ [Analyzer降级] 情感分析失败，保持现状。")
+    except Exception as exc:
+        logger.warning("Sentiment analyzer fallback — mood unchanged: %s", exc)
         score = 0
 
-    new_mood = max(0, min(100, state["mood"] + score))
-    print(f"🧠 [Analyzer] 心情变化: {state['mood']} -> {new_mood}")
+    new_mood = max(
+        settings.MOOD_MIN,
+        min(settings.MOOD_MAX, state["mood"] + score),
+    )
+    logger.debug("Mood shift: %s -> %s", state["mood"], new_mood)
     return {"mood": new_mood}
 
 
-def npc_angry(state: CombinedState):
+def npc_angry(state: CombinedState) -> dict[str, list[AIMessage]]:
+    """Return an in-character refusal when mood is below the angry threshold."""
     return {
         "messages": [
-            AIMessage(content="（NPC 狠狠地瞪了你一眼）我现在心情糟透了，离我远点！")
+            AIMessage(
+                content=(
+                    "（NPC glares at you）I'm in a terrible mood — leave me alone!"
+                )
+            )
         ]
     }
 
 
-def mood_router(state: CombinedState):
-    return "angry" if state["mood"] < 20 else "normal"
+def mood_router(state: CombinedState) -> Literal["angry", "normal"]:
+    """Route to angry or normal path based on current mood."""
+    if state["mood"] < settings.ANGRY_THRESHOLD:
+        return "angry"
+    return "normal"
 
 
-# ==========================================
-# 4. 构建工作流图
-# ==========================================
 builder = StateGraph(CombinedState)
 
 builder.add_node("analyzer", analyze_sentiment)

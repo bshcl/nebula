@@ -14,8 +14,12 @@ class AISettings(BaseSettings):
     PRIMARY_MODEL: str = "gemini-3.5-flash"
     BACKUP_MODEL: str = "gemini-3.1-flash-lite"
     LOCAL_MODEL: str = "llama3.2"
+    GROQ_FALLBACK_MODEL: str = "llama-3.1-70b-versatile"
 
     # NPC mood boundaries used by the LangGraph workflow
     ANGRY_THRESHOLD: int = 20
     MOOD_MIN: int = 0
     MOOD_MAX: int = 100
+
+    # Maximum characters returned by MCP / RAG tools to the LLM
+    TOOL_RESULT_MAX_CHARS: int = 2000
