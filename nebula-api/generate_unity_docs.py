@@ -1,27 +1,32 @@
+"""Generate a markdown snapshot of Unity C# scripts for LLM context."""
+
 import os
 
-# ==========================================
-# 配置区
-# ==========================================
-# 💡 架构师提示：指向你 Unity 项目的 Scripts 文件夹
-UNITY_SCRIPTS_PATH = "E:/UnityProject/Nebula-Unity-Client/Assets/_Project/Scripts"
-OUTPUT_FILE = "NEBULA_UNITY_CONTEXT.md"
+from app.core.config import settings
 
-# 定义要排除的后缀和文件夹
+# Monorepo: nebula-api/../Nebula-Unity-Client/Assets/_Project/Scripts
+UNITY_SCRIPTS_PATH = os.path.join(
+    os.path.dirname(settings.ROOT_DIR),
+    "Nebula-Unity-Client",
+    "Assets",
+    "_Project",
+    "Scripts",
+)
+OUTPUT_FILE = os.path.join(settings.ROOT_DIR, "NEBULA_UNITY_CONTEXT.md")
+
 EXCLUDE_EXTENSIONS = {".meta", ".unity", ".prefab", ".asset", ".controller", ".mat"}
 EXCLUDE_DIRS = {"Plugins", "TextMesh Pro", "Editor"}
 
 
-def generate_unity_context():
+def generate_unity_context() -> None:
     if not os.path.exists(UNITY_SCRIPTS_PATH):
-        print(f"❌ 错误：找不到路径 {UNITY_SCRIPTS_PATH}，请检查路径配置。")
+        print(f"Error: Unity scripts path not found: {UNITY_SCRIPTS_PATH}")
         return
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write("# 🧊 Nebula System | Unity 身体架构文档\n\n")
-        f.write("## 1. 脚本目录结构\n```text\n")
+        f.write("# Nebula System | Unity client architecture snapshot\n\n")
+        f.write("## 1. Script directory tree\n```text\n")
 
-        # 1. 生成目录树
         for root, dirs, files in os.walk(UNITY_SCRIPTS_PATH):
             dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
             level = root.replace(UNITY_SCRIPTS_PATH, "").count(os.sep)
@@ -32,9 +37,8 @@ def generate_unity_context():
                 if not any(file.endswith(ext) for ext in EXCLUDE_EXTENSIONS):
                     f.write(f"{sub_indent}{file}\n")
 
-        f.write("```\n\n## 2. C# 核心源代码\n")
+        f.write("```\n\n## 2. C# source files\n")
 
-        # 2. 提取代码内容
         for root, dirs, files in os.walk(UNITY_SCRIPTS_PATH):
             dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
             for file in files:
@@ -42,16 +46,16 @@ def generate_unity_context():
                     file_path = os.path.join(root, file)
                     rel_path = os.path.relpath(file_path, UNITY_SCRIPTS_PATH)
 
-                    f.write(f"\n### 文件: {rel_path}\n")
+                    f.write(f"\n### File: {rel_path}\n")
                     f.write("```csharp\n")
                     try:
                         with open(file_path, "r", encoding="utf-8") as code_f:
                             f.write(code_f.read())
-                    except Exception as e:
-                        f.write(f"// 读取失败: {e}")
+                    except OSError as exc:
+                        f.write(f"// Read failed: {exc}")
                     f.write("\n```\n")
 
-    print(f"✅ Unity 档案已生成至: {OUTPUT_FILE}")
+    print(f"Unity snapshot written to: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
