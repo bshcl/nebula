@@ -69,3 +69,4 @@ nebula-api/sessions/*.json
 Thumbs.db
 **/__pycache__/
 *.pyc
+.vscode/
