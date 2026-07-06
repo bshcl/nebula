@@ -77,6 +77,16 @@ Stream may include in-band signals such as `[[MOOD:75]]` and `[[ANIM:WAVE]]`.
 
 Run scripts from the `nebula-api` directory so `app` imports resolve.
 
+## Tests and lint
+
+```powershell
+pip install -r requirements-dev.txt
+ruff check app tests
+pytest
+```
+
+CI runs the same checks on pull requests (see `.github/workflows/nebula-api-ci.yml`).
+
 ## Data files (local only, not in git)
 
 | Path | Created by |

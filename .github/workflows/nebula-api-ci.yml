@@ -1,0 +1,44 @@
+name: Nebula API CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "nebula-api/**"
+      - ".github/workflows/nebula-api-ci.yml"
+  pull_request:
+    paths:
+      - "nebula-api/**"
+      - ".github/workflows/nebula-api-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nebula-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            nebula-api/requirements.txt
+            nebula-api/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff lint
+        run: ruff check app tests
+
+      - name: Pytest
+        env:
+          GOOGLE_API_KEY: test-google-key
+          GROQ_API_KEY: test-groq-key
+          GOOGLE_MAPS_API_KEY: test-maps-key
+          LOG_DIR: /tmp/nebula-logs
+        run: pytest -q
