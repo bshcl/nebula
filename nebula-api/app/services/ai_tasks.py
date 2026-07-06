@@ -5,9 +5,8 @@ from langchain_core.runnables import Runnable
 from app.core.config import get_logger
 from app.core.database import SessionLocal
 from app.core.utils import ensure_string
-from app.models.db_models import ChatSession, Message
+from app.models.db_models import DEFAULT_SESSION_TITLE, ChatSession, Message
 from app.services.memory_service import MemoryService
-from app.models.db_models import DEFAULT_SESSION_TITLE
 
 logger = get_logger(__name__)
 

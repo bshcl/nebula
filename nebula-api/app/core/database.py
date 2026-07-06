@@ -25,3 +25,10 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def init_db() -> None:
+    """Create database tables if they do not exist."""
+    from app.models.db_models import Base
+
+    Base.metadata.create_all(bind=engine)
