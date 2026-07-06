@@ -1,25 +1,29 @@
-from app.core.database import engine  # 这里是为了后续初始化
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
-from sqlalchemy.orm import relationship, declarative_base
+"""SQLAlchemy ORM models for chat sessions and messages."""
+
 from datetime import datetime, timezone
 
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import declarative_base, relationship
 
-# 定义数据库模型
+from app.core.database import engine
+
 Base = declarative_base()
 
+DEFAULT_SESSION_TITLE = "New Session"
 
-# 会话元数据表 (就像一个文件夹)
+
 class ChatSession(Base):
+    """Session metadata (mood, title, summary, bot profile)."""
+
     __tablename__ = "chat_sessions"
 
-    id = Column(String, primary_key=True, index=True)  # Session ID (uuid)
+    id = Column(String, primary_key=True, index=True)
     bot_name = Column(String)
     bot_personality = Column(String)
 
-    # 核心新需求字段
-    title = Column(String, default="新会话")  # 语义化标题
-    summary = Column(Text, default="")  # 压缩后的记忆梗概
-    mood = Column(Integer, default=50)  # 好感度
+    title = Column(String, default=DEFAULT_SESSION_TITLE)
+    summary = Column(Text, default="")
+    mood = Column(Integer, default=50)
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
@@ -28,32 +32,31 @@ class ChatSession(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # 【架构精华】：建立与 Message 的一对多关系
-    # 这样我们可以通过 session.messages 直接访问该会话的所有消息
     messages = relationship(
-        "Message", back_populates="session", cascade="all, delete-orphan"
+        "Message",
+        back_populates="session",
+        cascade="all, delete-orphan",
     )
 
 
-# 对话明细表 (就像文件夹里的每一页纸)
 class Message(Base):
+    """A single chat message belonging to a session."""
+
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    # 【外键】：指向 chat_sessions 表的 id
     session_id = Column(String, ForeignKey("chat_sessions.id"))
 
-    role = Column(String)  # user / assistant
-    content = Column(Text)  # 对话原文
+    role = Column(String)  # "user" or "assistant"
+    content = Column(Text)
 
-    # 【核心新需求】：是否已归档到摘要中
     is_archived = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    # 反向关联
     session = relationship("ChatSession", back_populates="messages")
 
 
-def init_db():
+def init_db() -> None:
+    """Create database tables if they do not exist."""
     Base.metadata.create_all(bind=engine)
