@@ -1,5 +1,5 @@
-# app/core/mcp_manager.py
+"""Global holder for the MCP ClientSession (set during app lifespan)."""
 
-# 💡 架构师提示：这是一个单例容器 (Singleton Container)
-# 用于存放全局唯一的 MCP ClientSession 对象
-mcp_session = None
+from mcp import ClientSession
+
+mcp_session: ClientSession | None = None

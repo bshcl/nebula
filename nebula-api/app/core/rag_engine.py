@@ -1,17 +1,26 @@
-from langchain_huggingface import HuggingFaceEmbeddings  # 👈 换成这个
-from langchain_chroma import Chroma
+"""Local Chroma vector store for world-setting RAG."""
+
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "../data/chroma_db")
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+
+from app.core.config import settings
+
+# Kept for scripts/init_rag.py
+DB_PATH = os.path.join(settings.ROOT_DIR, "app", "data", "chroma_db")
+
+EMBEDDING_MODEL = settings.EMBEDDING_MODEL
+
 
 class RAGEngine:
-    def __init__(self):
-        # 💡 架构师提示：使用本地模型，不再依赖 Google API，彻底解决 404
-        # 第一次运行会自动下载模型文件（约 80MB）
-        self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        self.vector_db = None
+    """Lazy-loaded Chroma retriever backed by local HuggingFace embeddings."""
 
-    def get_vector_db(self):
+    def __init__(self) -> None:
+        self.embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+        self.vector_db: Chroma | None = None
+
+    def get_vector_db(self) -> Chroma | None:
         if self.vector_db is None:
             if not os.path.exists(DB_PATH):
                 return None
@@ -20,7 +29,7 @@ class RAGEngine:
             )
         return self.vector_db
 
-    def get_retriever(self, k=2):
+    def get_retriever(self, k: int = 2):
         db = self.get_vector_db()
         if not db:
             return None

@@ -23,3 +23,6 @@ class AISettings(BaseSettings):
 
     # Maximum characters returned by MCP / RAG tools to the LLM
     TOOL_RESULT_MAX_CHARS: int = 2000
+
+    # RAG model identifier
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
