@@ -138,6 +138,8 @@ async def delete_session(
     session_id: str, db: Session = Depends(get_db)
 ) -> dict[str, Any]:
     """Delete a chat session and all associated messages."""
-    if db_service.delete_chat_session(db, session_id):
-        return {"status": "success", "message": "Session deleted successfully"}
-    raise HTTPException(status_code=404, detail="Failed to delete session")
+    if not db_service.get_chat_session_full(db, session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    db_service.delete_chat_session(db, session_id)
+    return {"status": "success", "message": "Session deleted successfully"}

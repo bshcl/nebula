@@ -29,6 +29,15 @@ class Settings(BaseConfig, AISettings):
         """SQLAlchemy database URL for the SQLite database."""
         return f"sqlite:///{self.DB_PATH}"
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def CORS_ORIGINS_LIST(self) -> list[str]:
+        """Parse CORS_ORIGINS into a list for FastAPI middleware."""
+        raw = self.CORS_ORIGINS.strip()
+        if raw == "*":
+            return ["*"]
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
 
 settings = Settings()
 logger = setup_logging(settings.LOG_LEVEL, settings.LOG_DIR)

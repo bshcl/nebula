@@ -9,6 +9,8 @@ class BaseConfig(BaseSettings):
     VERSION: str = "3.0.0"
     LOG_LEVEL: str = "INFO"
     LOG_DIR: str = r"E:\log"
+    # Comma-separated origins, or "*" for allow-all (development only)
+    CORS_ORIGINS: str = "*"
 
     # Current file: app/core/config/base.py (4 levels up to nebula-api root)
     ROOT_DIR: str = os.path.dirname(
