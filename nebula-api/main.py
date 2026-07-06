@@ -11,7 +11,7 @@ from mcp.client.stdio import stdio_client
 from app.api import chat
 from app.core import mcp_manager
 from app.core.config import get_logger, settings
-from app.models.db_models import init_db
+from app.core.database import init_db
 
 logger = get_logger(__name__)
 
