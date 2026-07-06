@@ -60,6 +60,9 @@ nebula-api/*.pyc
 nebula-api/*.pyo
 nebula-api/*.log
 nebula-api/english-notes.md
+nebula-api/app/data/nebula.db
+nebula-api/app/data/chroma_db/
+nebula-api/sessions/*.json
 
 # 系统生成文件
 .DS_Store
