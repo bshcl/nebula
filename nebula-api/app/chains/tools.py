@@ -17,18 +17,18 @@ class MapTools:
         Args:
             query: Search keywords, e.g. 'ramen near shibuya Station'
         """
-        logger.debug(f"MCP map search: quert={query}")
+        logger.debug("MCP map search: query=%s", query)
 
         if not mcp_manager.mcp_session:
             return "Error: Maps service is disconnected. Please try again later."
 
         try:
-            result = await mcp_manager.mcp_session.call_toll(
+            result = await mcp_manager.mcp_session.call_tool(
                 "maps_search_places", {"query": query}
             )
             return str(result.content)[: settings.TOOL_RESULT_MAX_CHARS]
         except Exception as e:
-            logger.warning(f"Maps search failed: {e}")
+            logger.warning("Maps search failed: %s", e)
             return f"Maps search failed: {e}"
 
     @staticmethod
@@ -48,7 +48,7 @@ class MapTools:
             )
             return str(result.content)[: settings.TOOL_RESULT_MAX_CHARS]
         except Exception as e:
-            logger.warning(f"Place details lookup failed: {e}")
+            logger.warning("Place details lookup failed: %s", e)
             return f"Failed to fetch place details: {e}"
 
 
@@ -63,7 +63,7 @@ class InteractionTools:
         Args:
             item_name: Name of the gift item to grant.
         """
-        logger.info(f"Gift triggered: item={item_name}")
+        logger.info("Gift triggered: item=%s", item_name)
         return (
             f"System message: Successfully granted {item_name}."
             "Confirm delivery to the player in your reply."
@@ -85,7 +85,7 @@ class WorldKnowledgeTools:
         if not retriever:
             return "Error: RAG engine is not initialized. Please try again later."
 
-        logger.debug(f"RAG lore query: query={query}")
+        logger.debug("RAG lore query: query=%s", query)
         docs = await retriever.ainvoke(query)
 
         if not docs:
