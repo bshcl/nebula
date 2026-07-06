@@ -37,8 +37,28 @@ Logs: console and `LOG_DIR` (default `E:\log\nebula-api.log`).
 | `GOOGLE_MAPS_API_KEY` | Yes | Maps MCP (world observer tools) |
 | `LOG_LEVEL` | No | Default `INFO`; use `DEBUG` for LangGraph traces |
 | `LOG_DIR` | No | Default `E:\log` |
+| `CORS_ORIGINS` | No | `*` (dev) or comma-separated allowed origins |
 
 See `.env.example` for optional model overrides.
+
+## Streaming protocol (`POST /api/v1/completions`)
+
+The response uses `Content-Type: text/event-stream` but the body is a **raw UTF-8 text stream**, not standard SSE `data:` frames.
+
+| Aspect | Behavior |
+|--------|----------|
+| Format | Plain text chunks as the LLM generates tokens |
+| End signal | Final chunk may include `[[MOOD:{0-100}]]` for Unity mood sync |
+| In-band tags | NPC may emit `[[ANIM:WAVE]]`, `[[ANIM:ANGRY]]`, etc. |
+| Unity client | `NebulaStreamHandler` reads bytes directly via `DownloadHandlerScript` |
+
+Example stream:
+
+```text
+[[ANIM:WAVE]] Hmph, you finally showed up...[[MOOD:72]]
+```
+
+If you integrate a new client, read the response body incrementally; do not expect `data: ...\n\n` SSE framing.
 
 ## API endpoints
 

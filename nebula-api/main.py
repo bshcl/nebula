@@ -60,7 +60,7 @@ app.include_router(chat.router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict origins in production
+    allow_origins=settings.CORS_ORIGINS_LIST,
     allow_methods=["*"],
     allow_headers=["*"],
 )
