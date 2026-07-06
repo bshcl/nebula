@@ -15,17 +15,11 @@ class ChatRequest(BaseModel):
 
     session_id: str = Field(description="Unique session identifier")
     message: str = Field(description="Latest user message")
-    history: list[ChatMessage] = Field(description="Prior messages for context")
+    history: list[ChatMessage] = Field(
+        default_factory=list,
+        description=(
+            "Legacy client field; ignored. Conversation context is loaded from the database."
+        ),
+    )
     bot_name: str = Field(description="NPC display name")
     bot_personality: str = Field(description="NPC personality prompt fragment")
-
-
-class ChatResponse(BaseModel):
-    """Non-streaming chat response envelope (legacy / optional)."""
-
-    status: str = Field(description='Outcome status, e.g. "success" or "error"')
-    reply: str = Field(description="Assistant reply text")
-    conversation_id: str | None = Field(
-        default=None,
-        description="Optional conversation id for multi-turn clients",
-    )

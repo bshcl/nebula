@@ -31,6 +31,6 @@ class Settings(BaseConfig, AISettings):
 
 
 settings = Settings()
-logger = setup_logging(settings.LOG_LEVEL)
+logger = setup_logging(settings.LOG_LEVEL, settings.LOG_DIR)
 
 __all__ = ["settings", "get_logger", "logger"]

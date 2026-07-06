@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from sqlalchemy.orm import Session
 
 from app.chains.agents import soul_llm_cloud as llm
@@ -36,8 +36,23 @@ async def graph_streamer(
     existing_session = db_service.get_chat_session_full(db, payload.session_id)
     current_mood = existing_session.mood if existing_session else 50
 
+    prior_messages = MemoryService.get_unarchived_messages(db, payload.session_id)
+    if (
+        prior_messages
+        and prior_messages[-1].role == "user"
+        and prior_messages[-1].content == payload.message
+    ):
+        prior_messages = prior_messages[:-1]
+
+    history_messages: list[HumanMessage | AIMessage] = []
+    for msg in prior_messages:
+        if msg.role == "user":
+            history_messages.append(HumanMessage(content=msg.content))
+        elif msg.role == "assistant":
+            history_messages.append(AIMessage(content=msg.content))
+
     initial_state = {
-        "messages": [HumanMessage(content=payload.message)],
+        "messages": history_messages + [HumanMessage(content=payload.message)],
         "mood": current_mood,
         "summary": existing_session.summary if existing_session else "",
         "location": DEFAULT_LOCATION,
@@ -71,11 +86,9 @@ async def graph_streamer(
 
     count = MemoryService.get_unarchived_messages_count(db, payload.session_id)
     if count >= 3:
-        background_tasks.add_task(ai_tasks.generate_title_task(payload.session_id, llm))
+        background_tasks.add_task(ai_tasks.generate_title_task, payload.session_id, llm)
     if count >= 10:
-        background_tasks.add_task(
-            ai_tasks.compress_memory_task(payload.session_id, llm)
-        )
+        background_tasks.add_task(ai_tasks.compress_memory_task, payload.session_id, llm)
 
 
 @router.post("/completions")
