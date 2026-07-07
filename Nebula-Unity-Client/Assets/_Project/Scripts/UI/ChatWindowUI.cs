@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -22,8 +21,7 @@ namespace Nebula.UI
         [SerializeField] private NebulaManager nebulaManager;
 
         private bool _isProcessing;
-        private Coroutine _typewriterCoroutine;
-
+        private bool _awaitingFirstChunk;
         private void OnEnable()
         {
             if (nebulaManager != null)
@@ -44,24 +42,13 @@ namespace Nebula.UI
         {
             if (string.IsNullOrEmpty(cleanText)) return;
 
-            if (_typewriterCoroutine != null) StopCoroutine(_typewriterCoroutine);
-
-            _typewriterCoroutine = StartCoroutine(TypewriterRoutine(cleanText));
-
-            Debug.Log("[UI] Dialogue updated from manager broadcast.");
-        }
-
-        private IEnumerator TypewriterRoutine(string fullText)
-        {
-            dialogueText.text = "";
-
-            foreach (char c in fullText)
+            if (_awaitingFirstChunk)
             {
-                dialogueText.text += c;
-                yield return new WaitForSeconds(0.03f);
+                dialogueText.text = "";
+                _awaitingFirstChunk = false;
             }
 
-            _typewriterCoroutine = null;
+            dialogueText.text += cleanText;
         }
 
         /// <summary>
@@ -75,6 +62,7 @@ namespace Nebula.UI
             if (string.IsNullOrEmpty(userInput)) return;
 
             SetLoadingState(true);
+            _awaitingFirstChunk = true;
 
             try
             {
@@ -88,6 +76,7 @@ namespace Nebula.UI
             finally
             {
                 SetLoadingState(false);
+                _awaitingFirstChunk = false;
                 inputField.text = "";
             }
         }
