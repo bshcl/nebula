@@ -39,7 +39,7 @@ namespace Nebula.Services
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    Debug.LogError($"[Service] Stream request failed: {req.error}");
+                    throw new Exception($"Stream request failed: {req.error}");
                 }
             }
         }

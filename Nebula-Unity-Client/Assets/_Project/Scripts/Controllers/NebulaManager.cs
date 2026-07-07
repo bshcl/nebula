@@ -80,6 +80,7 @@ namespace Nebula.Controllers
             catch (Exception e)
             {
                 Debug.LogError($"[Manager] Chat flow failed: {e.Message}");
+                throw;
             }
             finally
             {
