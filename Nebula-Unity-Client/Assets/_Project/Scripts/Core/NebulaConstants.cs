@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Nebula.Core
+﻿namespace Nebula.Core
 {
-    internal class NebulaConstants
+    internal static class NebulaConstants
     {
         /// <summary>
-        /// RESTful协议相关常量
+        /// HTTP and REST-related constants.
         /// </summary>
         public static class RestfulConstants
         {

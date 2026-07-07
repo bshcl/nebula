@@ -1,12 +1,17 @@
 using UnityEngine;
 
-public class Billboard : MonoBehaviour
+namespace Nebula.Visuals
 {
-    // 每一帧都执行
-    void LateUpdate()
+    /// <summary>
+    /// Keeps this transform facing the main camera (typical world-space UI billboard).
+    /// </summary>
+    public class Billboard : MonoBehaviour
     {
-        // 单词：LookAt [lʊk æt] 看向
-        // 让这个物体（Canvas）的正面永远对着主摄像机
-        transform.LookAt(transform.position + Camera.main.transform.forward);
+        private void LateUpdate()
+        {
+            if (Camera.main == null) return;
+
+            transform.LookAt(transform.position + Camera.main.transform.forward);
+        }
     }
 }
