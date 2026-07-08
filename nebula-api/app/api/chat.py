@@ -63,19 +63,27 @@ async def graph_streamer(
     full_response = ""
     final_mood = current_mood
 
-    async for event in npc_brain.astream(initial_state, stream_mode="updates"):
-        logger.debug("LangGraph event: %s", event)
+    async for mode, chunk in npc_brain.astream(
+        initial_state,
+        stream_mode=["messages", "updates"],
+    ):
+        if mode == "updates":
+            for node_name, output in chunk.items():
+                logger.debug("LangGraph event: %s", {node_name: output})
+                if "mood" in output:
+                    final_mood = output["mood"]
+        elif mode == "messages":
+            message_chunk, metadata = chunk
+            node_name = metadata.get("langgraph_node", "")
+            if node_name not in ("soul_node", "angry_node"):
+                continue
 
-        for node_name, output in event.items():
-            if node_name == "soul_node" and "messages" in output:
-                last_message = output["messages"][-1]
-                content = ensure_string(last_message.content)
-                if content:
-                    full_response += content
-                    yield content
+            token = ensure_string(message_chunk.content)
+            if not token:
+                continue
 
-            if "mood" in output:
-                final_mood = output["mood"]
+            full_response += token
+            yield token
 
     yield f"[[MOOD:{final_mood}]]"
 
@@ -83,7 +91,6 @@ async def graph_streamer(
     db_service.upsert_chat_session(
         db, payload.session_id, payload.bot_name, payload.bot_personality, final_mood
     )
-
     count = MemoryService.get_unarchived_messages_count(db, payload.session_id)
     if count >= 3:
         background_tasks.add_task(ai_tasks.generate_title_task, payload.session_id, llm)
@@ -113,9 +120,7 @@ async def get_sessions(db: Session = Depends(get_db)) -> dict[str, Any]:
 
 
 @router.get("/sessions/{session_id}")
-async def get_session_data(
-    session_id: str, db: Session = Depends(get_db)
-) -> dict[str, Any]:
+async def get_session_data(session_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     """Load full session metadata and message history."""
     session = db_service.get_chat_session_full(db, session_id)
     if not session:
@@ -134,9 +139,7 @@ async def get_session_data(
 
 
 @router.delete("/sessions/{session_id}")
-async def delete_session(
-    session_id: str, db: Session = Depends(get_db)
-) -> dict[str, Any]:
+async def delete_session(session_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     """Delete a chat session and all associated messages."""
     if not db_service.get_chat_session_full(db, session_id):
         raise HTTPException(status_code=404, detail="Session not found")
