@@ -23,9 +23,7 @@ async def call_world_agent(state: CombinedState) -> dict[str, list[BaseMessage]]
     if world_agent_cloud is None:
         return {
             "messages": [
-                AIMessage(
-                    content="System warning: World perception module is not running."
-                )
+                AIMessage(content="System warning: World perception module is not running.")
             ]
         }
 
@@ -35,7 +33,7 @@ async def call_world_agent(state: CombinedState) -> dict[str, list[BaseMessage]]
         last_msg.content = f"{WORLD_REPORT_PREFIX} {last_msg.content}"
         return {"messages": [last_msg]}
     except Exception as exc:
-        logger.warning("World node cloud fallback triggered: %s", exc)
+        logger.info("World node cloud fallback triggered: %s", exc)
         return {
             "messages": [
                 AIMessage(
@@ -66,7 +64,7 @@ async def call_soul_agent(state: CombinedState) -> dict[str, list[BaseMessage]]:
         result = await soul_agent.ainvoke(state)
         return {"messages": result["messages"]}
     except Exception as exc:
-        logger.warning("Soul node cloud fallback — switching to local Ollama: %s", exc)
+        logger.info("Soul node cloud fallback — switching to local Ollama: %s", exc)
 
         offline_instruction = SOUL_MANAGER_PROMPT.format(
             mood=state["mood"], summary=state.get("summary", "")
@@ -96,14 +94,12 @@ def analyze_sentiment(state: CombinedState) -> dict[str, int]:
         content_text = (
             res.content
             if isinstance(res.content, str)
-            else "".join(
-                part.get("text", "") for part in res.content if isinstance(part, dict)
-            )
+            else "".join(part.get("text", "") for part in res.content if isinstance(part, dict))
         )
         numbers = re.findall(r"-?\d+", content_text)
         score = int(numbers[0]) if numbers else 0
     except Exception as exc:
-        logger.warning("Sentiment analyzer fallback — mood unchanged: %s", exc)
+        logger.info("Sentiment analyzer fallback — mood unchanged: %s", exc)
         score = 0
 
     new_mood = max(
@@ -118,11 +114,7 @@ def npc_angry(state: CombinedState) -> dict[str, list[AIMessage]]:
     """Return an in-character refusal when mood is below the angry threshold."""
     return {
         "messages": [
-            AIMessage(
-                content=(
-                    "（NPC glares at you）I'm in a terrible mood — leave me alone!"
-                )
-            )
+            AIMessage(content=("（NPC glares at you）I'm in a terrible mood — leave me alone!"))
         ]
     }
 
@@ -134,6 +126,17 @@ def mood_router(state: CombinedState) -> Literal["angry", "normal"]:
     return "normal"
 
 
+def post_analyzer_router(state: CombinedState) -> Literal["angry", "world", "soul"]:
+    """Route to angry, world, or soul path based on mood and SKIP_WORLD_NODE."""
+    route = mood_router(state)
+    if route == "angry":
+        return "angry"
+    if settings.SKIP_WORLD_NODE:
+        logger.info("Demo mode: skipping world_node")
+        return "soul"
+    return "world"
+
+
 builder = StateGraph(CombinedState)
 
 builder.add_node("analyzer", analyze_sentiment)
@@ -143,10 +146,12 @@ builder.add_node("angry_node", npc_angry)
 
 builder.add_edge(START, "analyzer")
 builder.add_conditional_edges(
-    "analyzer", mood_router, {"angry": "angry_node", "normal": "world_node"}
+    "analyzer",
+    post_analyzer_router,
+    {"angry": "angry_node", "world": "world_node", "soul": "soul_node"},
 )
+builder.add_edge("angry_node", END)
 builder.add_edge("world_node", "soul_node")
 builder.add_edge("soul_node", END)
-builder.add_edge("angry_node", END)
 
 npc_brain = builder.compile()

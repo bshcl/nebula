@@ -25,6 +25,7 @@ def create_cloud_llm(model_name: str, temperature: float = 0.0) -> Runnable:
         model=model_name,
         google_api_key=settings.GOOGLE_API_KEY,
         temperature=temperature,
+        max_retries=0,  # fail fast -> Groq sooner if primary fails
     )
     backup = ChatGroq(
         model=settings.GROQ_FALLBACK_MODEL,

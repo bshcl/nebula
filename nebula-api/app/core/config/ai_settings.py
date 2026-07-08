@@ -26,3 +26,6 @@ class AISettings(BaseSettings):
 
     # RAG model identifier
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+
+    # Skip world node if true
+    SKIP_WORLD_NODE: bool = False
