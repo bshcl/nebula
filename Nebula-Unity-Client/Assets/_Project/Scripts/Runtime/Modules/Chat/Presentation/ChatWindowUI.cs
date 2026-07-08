@@ -2,9 +2,8 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Nebula.Controllers;
 
-namespace Nebula.UI
+namespace Nebula.Modules.Chat
 {
     /// <summary>
     /// Chat presentation layer: user input and dialogue rendering only.

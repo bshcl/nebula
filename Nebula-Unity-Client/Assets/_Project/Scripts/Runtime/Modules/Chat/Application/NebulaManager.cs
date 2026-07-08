@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
-using Nebula.Interfaces;
-using Nebula.Models;
-using Nebula.Services;
 
-namespace Nebula.Controllers
+namespace Nebula.Modules.Chat
 {
     /// <summary>
     /// Coordinates API calls, parses in-band signals, and dispatches NPC actions.

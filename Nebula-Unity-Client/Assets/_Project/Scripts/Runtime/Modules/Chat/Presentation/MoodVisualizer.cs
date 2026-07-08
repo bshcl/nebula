@@ -1,8 +1,7 @@
-﻿using Nebula.Controllers;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
-namespace Nebula.Visuals
+namespace Nebula.Modules.Chat
 {
     public class MoodVisualizer : MonoBehaviour
     {

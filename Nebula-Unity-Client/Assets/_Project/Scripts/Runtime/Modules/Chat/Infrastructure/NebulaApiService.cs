@@ -1,6 +1,4 @@
-﻿using Nebula.Core;
-using Nebula.Interfaces;
-using Nebula.Models;
+﻿using Nebula.Framework;
 using Newtonsoft.Json;
 using System;
 using System.Text;
@@ -8,7 +6,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Nebula.Services
+namespace Nebula.Modules.Chat
 {
     public class NebulaApiService : INebulaApiService
     {

@@ -1,4 +1,4 @@
-﻿namespace Nebula.Core
+﻿namespace Nebula.Framework
 {
     internal static class NebulaConstants
     {

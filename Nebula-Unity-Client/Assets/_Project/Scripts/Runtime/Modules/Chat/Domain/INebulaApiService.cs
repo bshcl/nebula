@@ -1,8 +1,7 @@
-﻿using Nebula.Models;
-using System;
+﻿using System;
 using System.Threading.Tasks;
 
-namespace Nebula.Interfaces
+namespace Nebula.Modules.Chat
 {
     public interface INebulaApiService
     {

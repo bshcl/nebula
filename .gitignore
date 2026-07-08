@@ -37,6 +37,8 @@
 *.mat
 *.prefab
 *.unity
+!Nebula-Unity-Client/Assets/_Project/Scenes/*.unity
+!Nebula-Unity-Client/Assets/_Project/Scenes/*.unity.meta
 *.asset
 *.wav
 *.mp3
