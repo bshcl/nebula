@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 
 
-namespace Nebula.Models
+namespace Nebula.Modules.Chat
 {
     [Serializable]
     public class ChatRequest

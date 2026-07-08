@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Nebula.Visuals
+namespace Nebula.Modules.Chat
 {
     /// <summary>
     /// Keeps this transform facing the main camera (typical world-space UI billboard).

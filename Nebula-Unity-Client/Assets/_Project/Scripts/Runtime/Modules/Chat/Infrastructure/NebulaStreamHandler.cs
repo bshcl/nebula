@@ -2,7 +2,7 @@
 using System.Text;
 using UnityEngine.Networking;
 
-namespace Nebula.Services
+namespace Nebula.Modules.Chat
 {
     /// <summary>
     /// Streams raw UTF-8 chunks from UnityWebRequest to subscribers.

@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Nebula.Models
+namespace Nebula.Modules.Chat
 {
 	public class ChatMessage
 	{
