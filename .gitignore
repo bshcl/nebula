@@ -40,6 +40,8 @@
 !Nebula-Unity-Client/Assets/_Project/Scenes/*.unity
 !Nebula-Unity-Client/Assets/_Project/Scenes/*.unity.meta
 *.asset
+!Nebula-Unity-Client/Assets/_Project/Art/Fonts/NotoSansJP-Regular SDF.asset
+!Nebula-Unity-Client/Assets/_Project/Art/Fonts/NotoSansJP-Regular SDF.asset.meta
 *.wav
 *.mp3
 *.ogg

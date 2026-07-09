@@ -19,6 +19,9 @@ namespace Nebula.Modules.Chat
         [Header("Animation")]
         [SerializeField] private Animator npcAnimator;
 
+        [Header("API")]
+        [SerializeField] private string apiBaseUrl = "http://localhost:8000/api/v1/completions";
+
         public event Action<string, int> OnMessageParsed;
         public event Action<string> OnSystemStatusChanged;
 
@@ -66,7 +69,7 @@ namespace Nebula.Modules.Chat
                     History = new List<ChatMessage>()
                 };
 
-                await _apiService.PostChatAsync(requestData, ProcessIncomingChunk);
+                await _apiService.PostChatAsync(apiBaseUrl, requestData, ProcessIncomingChunk);
 
                 // Flush any remaining plain text after the stream ends.
                 if (!string.IsNullOrEmpty(_streamBuffer))
