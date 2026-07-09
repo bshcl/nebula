@@ -1,0 +1,10 @@
+venv/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+*.log
+english-notes.md
+app/data/nebula.db
+app/data/chroma_db/
