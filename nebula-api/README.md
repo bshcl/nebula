@@ -65,6 +65,7 @@ If you integrate a new client, read the response body incrementally; do not expe
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/` | Health welcome message |
+| `GET` | `/health` | Liveness probe (`{"status":"ok"}`) |
 | `POST` | `/api/v1/completions` | Stream NPC reply (SSE-style text stream) |
 | `GET` | `/api/v1/sessions` | List session IDs |
 | `GET` | `/api/v1/sessions/{id}` | Session metadata + message history |
@@ -106,6 +107,16 @@ pytest
 ```
 
 CI runs the same checks on pull requests (see `.github/workflows/nebula-api-ci.yml`).
+
+## Docker
+
+From the monorepo root (requires `nebula-api/.env` with API keys):
+
+```powershell
+docker compose up --build
+```
+
+The image includes Python 3.12 and Node.js/npx for the Google Maps MCP subprocess. Data persists in Docker volumes (`nebula-api-data`, `nebula-api-logs`).
 
 ## Data files (local only, not in git)
 

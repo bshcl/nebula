@@ -71,6 +71,12 @@ def read_root() -> dict[str, str]:
     return {"message": "Welcome to the Nebula API"}
 
 
+@app.get("/health")
+def health_check() -> dict[str, str]:
+    """Liveness probe for Docker and load balancers."""
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
     import uvicorn
 

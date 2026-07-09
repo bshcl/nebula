@@ -1,0 +1,18 @@
+services:
+  api:
+    build: ./nebula-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./nebula-api/.env
+    environment:
+      LOG_DIR: /app/logs
+      # Demo-friendly: skip world node for faster first reply (override in .env)
+      # SKIP_WORLD_NODE: "true"
+    volumes:
+      - nebula-api-data:/app/app/data
+      - nebula-api-logs:/app/logs
+
+volumes:
+  nebula-api-data:
+  nebula-api-logs:

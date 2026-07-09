@@ -1,50 +1,119 @@
-"Detailed technical implementation is available on Zenn.dev"
+# Nebula System
 
-https://zenn.dev/tyora/articles/dc4610389adae0
+Full-stack AI NPC demo: **FastAPI + LangGraph** backend, **Unity** 3D client, token streaming, in-band mood/animation signals, and multi-layer LLM fallback.
 
-## 🚀 技術のハイライト / 技术亮点
+Detailed write-up (streaming): [Zenn article](https://zenn.dev/tyora/articles/dc4610389adae0)
 
----
+```
+nebula/
+├── nebula-api/          # Python backend (FastAPI, LangGraph, Chroma RAG)
+├── Nebula-Unity-Client/ # Unity 6 client (streaming chat UI)
+└── docker-compose.yml   # Optional containerized API
+```
 
-### 1. SSE (Server-Sent Events) による異種システム間のリアルタイム同期
-### 基于 SSE 的异构系统实时同步架构
+## Architecture
 
-**JP:**  
-本プロジェクトでは、Python (FastAPI) サーバーと Unity (C#) クライアント間の通信に **SSE (Server-Sent Events)** を採用しています。双方向通信の WebSocket ではなく、軽量な SSE を選択することで、HTTP プロトコルのオーバーヘッドを最小限に抑制。LLM のトークン生成と並行して、感情信号や制御指令を Unity 側へ**低レイテンシでストリーミング配信**し、NPC の反応速度を飛躍的に向上させました。
+```mermaid
+flowchart LR
+    Unity[Unity Client] -->|POST stream| API[FastAPI]
+    API --> LG[LangGraph]
+    LG --> A[Sentiment]
+    LG --> W[World Agent]
+    LG --> S[Soul Agent]
+    W --> MCP[Maps MCP]
+    S --> LLM[Gemini / Groq]
+    S -.-> Ollama[Ollama fallback]
+    API --> DB[(SQLite)]
+    S --> RAG[(Chroma RAG)]
+```
 
-**CN:**  
-本系统采用 **SSE (Server-Sent Events)** 协议，构建了从 Python 后端到 Unity 客户端的高效单向流式通道。相比 WebSocket，SSE 在轻量化与保持长连接方面具有显著优势，能显著降低系统开销。通过该架构，AI 后端可在生成文本的同时，将情感增量与控制指令实时推送到前端，实现了 NPC 与后端大脑状态的**毫秒级高精度同步**。
+**Stream path:** LLM tokens → `yield` → HTTP body chunks → Unity `NebulaStreamHandler` → UI append.
 
----
+**In-band signals:** `[[MOOD:50]]`, `[[ANIM:WAVE]]`, `[[SYSTEM:OFFLINE]]` embedded in the text stream.
 
-### 2. インバンド信号解析と動的ステートマシン制御
-### 带内信号解析驱动的动作状态机
+## Prerequisites
 
-**JP:**  
-AI の応答テキスト流の中に、正規表現でパース可能な**インバンド信号（In-band Signaling）**を埋め込む独自プロトコルを設計しました。Unity 側のコントローラー（NebulaManager）は、ストリームからリアルタイムに信号を分離・抽出し、以下の処理を実行します：
+| Component | Requirement |
+|-----------|---------------|
+| Backend | Python 3.11+, Node.js/npx (Maps MCP), API keys |
+| Unity | Unity 6, .NET / Newtonsoft.Json |
+| Optional | Ollama `llama3.2` for offline soul fallback |
+| Docker | Docker Desktop (optional) |
 
-- **ステートマシンの動的遷移**: 表情、ジェスチャー、待機モーションの自動切り替え。
-- **振る舞いの最適化**: プロンプトに基づくリアルタイムな演技制御。
+## Quick start — Backend (local)
 
-これにより、AI の「思考」が NPC の物理的な挙動として自然に投影されます。
+```powershell
+cd nebula-api
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
 
-**CN:**  
-系统设计了一套带内信令协议，将可解析的**带内信号（In-band Signaling）**内嵌于 AI 响应文本流中。Unity 端控制器利用正则表达式进行实时解析，并触发动态状态机切换：
+copy .env.example .env
+# Edit .env: GOOGLE_API_KEY, GROQ_API_KEY, GOOGLE_MAPS_API_KEY
 
-- **状态机动态迁移**: 自动切换表情、手势及待机动作。
-- **行为优化**: 基于 Prompt 实时控制 NPC 的交互演化。
+python scripts\init_rag.py
+venv\Scripts\uvicorn.exe main:app --reload
+```
 
-该机制确保了 AI 的“内在逻辑”能即时转化为 NPC 的“外在表现”，构建了深度沉浸的交互体验。
+- API: `http://127.0.0.1:8000`
+- Health: `GET /health` → `{"status":"ok"}`
+- Chat: `POST /api/v1/completions` (streaming)
 
----
+Smoke test:
 
-### 3. クラウド＋ローカルのハイブリッド LLM 構成とフォールバック機構
-### 云端与本地混合的高可用架构 (Fallback)
+```powershell
+.\scripts\demo.ps1
+```
 
-**JP:**  
-システムの**可用性（Availability）**を最大化するため、Gemini/Groq 等のクラウド LLM と、Ollama によるローカル推論を組み合わせた**ハイブリッド構成**を採用。クラウド側の障害を検知した際、自動的にローカル推论へ切り替わる**フォールバック（Fallback）機構**を実装しました。これにより、オフライン環境下でも NPC の論理性と連貫性を維持します。
+## Quick start — Docker
 
-**CN:**  
-为最大化系统的**可用性（Availability）**，采用云端（Gemini/Groq）与本地边缘侧（Ollama/Llama 3.2）协同推理的混合模式。具备完善的 **智能 Fallback 机制**：当检测到云端服务异常或网络波动时，系统将无缝切换至本地模型。这不仅提升了系统在极端环境下的容灾能力，还保证了 NPC 逻辑的连贯性。
+```powershell
+# Ensure nebula-api/.env exists with API keys
+docker compose up --build
+```
 
----
+First start may take 1–2 minutes (RAG index build + embedding model download).
+
+```powershell
+curl http://localhost:8000/health
+```
+
+**Demo tip:** set `SKIP_WORLD_NODE=true` in `.env` for faster replies during demos.
+
+## Quick start — Unity
+
+1. Open `Nebula-Unity-Client` in Unity 6
+2. Open `Assets/_Project/Scenes/SampleScene.unity`
+3. Select `NPC_Star` → **Nebula Manager** → confirm **API Base Url** = `http://localhost:8000/api/v1/completions`
+4. Play → send a message
+
+### Font setup (CJK + Japanese)
+
+MSYH covers Chinese/English. For Japanese kana, add fallback once in Editor:
+
+**MSYH SDF → Fallback Font Assets → `NotoSansJP-Regular SDF`**
+
+(`NotoSansJP` assets live under `Assets/_Project/Art/Fonts/`.)
+
+## API keys
+
+| Variable | Purpose |
+|----------|---------|
+| `GOOGLE_API_KEY` | Gemini (primary) |
+| `GROQ_API_KEY` | Groq fallback |
+| `GOOGLE_MAPS_API_KEY` | Maps MCP / world tools |
+
+See `nebula-api/.env.example` for all options.
+
+## Development status
+
+| Area | Phase | Status |
+|------|-------|--------|
+| nebula-api | A–G | ✅ v1.0 + token streaming |
+| Unity client | 0–2 | ✅ merged |
+| Unity client | 3 | PR [#21](https://github.com/bshcl/nebula/pull/21) (API URL + JP fonts) |
+| Demo & Ship | C | 🚧 Docker + README (this branch) |
+
+## License
+
+Personal portfolio project. Font licenses: see `Assets/TextMesh Pro/Fonts/` and `NotoSansJP` (OFL).
