@@ -8,6 +8,6 @@ namespace Nebula.Modules.Chat
         /// <summary>
         /// Posts a chat request and invokes onChunkReceived for each streamed text chunk.
         /// </summary>
-        Task PostChatAsync(ChatRequest request, Action<string> onChunkReceived);
+        Task PostChatAsync(string apiUrl, ChatRequest request, Action<string> onChunkReceived);
     }
 }

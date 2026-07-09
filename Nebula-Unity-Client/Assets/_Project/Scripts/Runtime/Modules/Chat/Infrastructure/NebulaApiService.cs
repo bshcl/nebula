@@ -12,12 +12,13 @@ namespace Nebula.Modules.Chat
     {
         private const string DefaultApiUrl = "http://localhost:8000/api/v1/completions";
 
-        public async Task PostChatAsync(ChatRequest request, Action<string> onChunkReceived)
+        public async Task PostChatAsync(string apiUrl, ChatRequest request, Action<string> onChunkReceived)
         {
+            string url = string.IsNullOrWhiteSpace(apiUrl) ? DefaultApiUrl : apiUrl;
             string json = JsonConvert.SerializeObject(request);
             byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
 
-            using (UnityWebRequest req = new UnityWebRequest(DefaultApiUrl, NebulaConstants.RestfulConstants.POST))
+            using (UnityWebRequest req = new UnityWebRequest(url, NebulaConstants.RestfulConstants.POST))
             {
                 var streamHandler = new NebulaStreamHandler();
                 streamHandler.OnChunkReceived += chunk => onChunkReceived?.Invoke(chunk);
