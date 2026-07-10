@@ -16,29 +16,43 @@ Write-Host "[demo] Health OK"
 
 Write-Host "[demo] Streaming completion (first chunks)..."
 $body = @{
-    session_id = "demo-smoke-$(Get-Date -Format 'yyyyMMddHHmmss')"
-    message    = "Say hello in one short sentence."
-    bot_name   = "Sakura"
+    session_id      = "demo-smoke-$(Get-Date -Format 'yyyyMMddHHmmss')"
+    message         = "Say hello in one short sentence."
+    bot_name        = "Sakura"
     bot_personality = "tsundere guide"
-    history    = @()
-} | ConvertTo-Json
+    history         = @()
+} | ConvertTo-Json -Compress -Depth 5
 
-# curl -N streams raw bytes; Invoke-WebRequest buffers unless we read the stream.
-# Use curl.exe if available for true streaming preview.
+$streamOk = $false
 if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-    $tmp = New-TemporaryFile
+    $bodyFile = New-TemporaryFile
     try {
-        curl.exe -s -N -X POST "$BaseUrl/api/v1/completions" `
+        # PowerShell splits JSON strings passed to curl -d; write a file instead.
+        [System.IO.File]::WriteAllText($bodyFile.FullName, $body)
+        $streamOut = curl.exe -s -N -X POST "$BaseUrl/api/v1/completions" `
             -H "Content-Type: application/json" `
-            -d $body `
-            --max-time 60 | Tee-Object -Variable streamOut | Out-Null
-        $preview = ($streamOut -join "").Substring(0, [Math]::Min(120, ($streamOut -join "").Length))
+            --data-binary "@$($bodyFile.FullName)" `
+            --max-time 60
+        $streamText = ($streamOut -join "")
+        if ($streamText -match '"detail"' -or $streamText -match 'json_invalid') {
+            throw "Stream request failed: $($streamText.Substring(0, [Math]::Min(200, $streamText.Length)))"
+        }
+        if ([string]::IsNullOrWhiteSpace($streamText)) {
+            throw "Stream response was empty."
+        }
+        $preview = $streamText.Substring(0, [Math]::Min(120, $streamText.Length))
         Write-Host "[demo] Stream preview: $preview..."
+        $streamOk = $true
     } finally {
-        Remove-Item $tmp -ErrorAction SilentlyContinue
+        Remove-Item $bodyFile -ErrorAction SilentlyContinue
     }
 } else {
     Write-Host "[demo] curl.exe not found — skipping stream test (health passed)."
+    $streamOk = $true
+}
+
+if (-not $streamOk) {
+    throw "Streaming completion check failed."
 }
 
 Write-Host "[demo] All checks passed."

@@ -6,13 +6,15 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN chmod +x docker-entrypoint.sh
+# Normalize CRLF from Windows checkouts; otherwise exec fails with "no such file or directory".
+RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
 ENV LOG_DIR=/app/logs
 RUN mkdir -p /app/logs app/data
