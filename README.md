@@ -109,10 +109,10 @@ See `nebula-api/.env.example` for all options.
 
 | Area | Phase | Status |
 |------|-------|--------|
-| nebula-api | A–G | ✅ v1.0 + token streaming |
-| Unity client | 0–2 | ✅ merged |
-| Unity client | 3 | PR [#21](https://github.com/bshcl/nebula/pull/21) (API URL + JP fonts) |
-| Demo & Ship | C | 🚧 Docker + README (this branch) |
+| **Phase 0** — refactor & engineering | nebula-api A–G | ✅ v1.0, token streaming, pytest + CI |
+| | Unity client 0–3 | ✅ streaming UI, modular layout, API URL + JP fonts |
+| | Demo & Ship | ✅ Docker, `/health`, README, `demo.ps1` ([#23](https://github.com/bshcl/nebula/pull/23), [#24](https://github.com/bshcl/nebula/pull/24)) |
+| **Phase 1** — productionization | Tool calling, memory, guardrails, eval, observability | ⏳ next |
 
 ## License
 

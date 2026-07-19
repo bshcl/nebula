@@ -68,6 +68,10 @@ nebula-api/app/data/nebula.db
 nebula-api/app/data/chroma_db/
 nebula-api/sessions/*.json
 
+# Local notes and drafts (not for GitHub)
+/Docs/
+/query
+
 # 系统生成文件
 .DS_Store
 Thumbs.db
