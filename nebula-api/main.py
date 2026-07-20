@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from app.api import chat
+from app.api import chat, inventory
 from app.core import mcp_manager
 from app.core.config import get_logger, settings
 from app.core.database import init_db
@@ -57,6 +57,7 @@ app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 init_db()
 
 app.include_router(chat.router, prefix="/api/v1")
+app.include_router(inventory.router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,

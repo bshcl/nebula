@@ -5,6 +5,34 @@ from sqlalchemy.orm import Session
 from app.models.db_models import ChatSession, InventoryItem
 
 
+def list_inventory(
+    db: Session,
+    session_id: str,
+) -> list[dict]:
+    """Return all stacked items for a session (read-only)."""
+
+    if not session_id or not str(session_id).strip():
+        raise ValueError("session_id is required")
+
+    chat_session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    if not chat_session:
+        raise ValueError(f"Session not found: {session_id}")
+
+    rows = (
+        db.query(InventoryItem)
+        .filter(InventoryItem.session_id == session_id)
+        .order_by(InventoryItem.item_id.asc())
+        .all()
+    )
+    return [
+        {
+            "item_id": row.item_id,
+            "qty": row.qty,
+        }
+        for row in rows
+    ]
+
+
 def grant_item(
     db: Session,
     session_id: str,
