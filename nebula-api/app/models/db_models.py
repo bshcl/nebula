@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -53,3 +53,19 @@ class Message(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     session = relationship("ChatSession", back_populates="messages")
+
+
+class InventoryItem(Base):
+    """One stacked inventory row per (session_id, item_id)."""
+
+    __tablename__ = "inventory_items"
+    # Composite unique: same item stacks via qty instead of duplicate rows.
+    __table_args__ = (
+        UniqueConstraint("session_id", "item_id", name="uix_session_item"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, ForeignKey("chat_sessions.id"), index=True)
+    item_id = Column(String, nullable=False)  # e.g. "star_candy"
+    qty = Column(Integer, default=1, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
