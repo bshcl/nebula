@@ -58,6 +58,7 @@ async def graph_streamer(
         "location": DEFAULT_LOCATION,
         "weather": DEFAULT_WEATHER,
         "remaining_steps": LANGGRAPH_REMAINING_STEPS,
+        "session_id": payload.session_id,
     }
 
     full_response = ""

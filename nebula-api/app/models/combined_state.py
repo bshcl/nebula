@@ -13,3 +13,4 @@ class CombinedState(TypedDict):
     location: str
     weather: str
     remaining_steps: int
+    session_id: str  # player session for quest/inventory tools
