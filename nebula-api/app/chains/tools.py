@@ -59,14 +59,23 @@ class InteractionTools:
     @tool
     def send_gift(item_name: str) -> str:
         """
-        Send a gift to the player when mood >= 90 and the player asks for one.
+        Grant a gift item to the player inventory (gameplay side effect).
+        Call only when mood >= 90 and the player explicitly asks for a gift.
         Args:
-            item_name: Name of the gift item to grant.
+            item_name: Short snake_case or english id for the gift, e.g. star_candy.
         """
-        logger.info("Gift triggered: item=%s", item_name)
+        cleaned = (item_name or "").strip().replace(" ", "_")
+        if not cleaned:
+            return (
+                "System message: Gift failed — empty item name. "
+                "Do not emit a GIFT signal. Apologize in character."
+            )
+
+        logger.info("Gift triggered: item=%s", cleaned)
         return (
-            f"System message: Successfully granted {item_name}."
-            "Confirm delivery to the player in your reply."
+            f"System message: Successfully granted {cleaned}. "
+            f"In your player-facing reply, include the exact signal [[GIFT:{cleaned}]] "
+            "and confirm delivery in character (tsundere tone)."
         )
 
 

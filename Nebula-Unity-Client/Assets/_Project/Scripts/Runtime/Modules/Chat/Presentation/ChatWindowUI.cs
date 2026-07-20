@@ -26,6 +26,7 @@ namespace Nebula.Modules.Chat
             if (nebulaManager != null)
             {
                 nebulaManager.OnMessageParsed += UpdateDialogueDisplay;
+                nebulaManager.OnGiftReceived += ShowGiftReceived;
             }
         }
 
@@ -34,6 +35,7 @@ namespace Nebula.Modules.Chat
             if (nebulaManager != null)
             {
                 nebulaManager.OnMessageParsed -= UpdateDialogueDisplay;
+                nebulaManager.OnGiftReceived -= ShowGiftReceived;
             }
         }
 
@@ -48,6 +50,20 @@ namespace Nebula.Modules.Chat
             }
 
             dialogueText.text += cleanText;
+        }
+
+        private void ShowGiftReceived(string itemName)
+        {
+            if (dialogueText == null) return;
+
+            if (_awaitingFirstChunk)
+            {
+                dialogueText.text = "";
+                _awaitingFirstChunk = false;
+            }
+
+            dialogueText.text += $"\n<color=#E8B923>[Gift received: {itemName}]</color>\n";
+            Debug.Log($"[UI] Gift banner shown: {itemName}");
         }
 
         /// <summary>

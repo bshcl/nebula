@@ -24,6 +24,8 @@ namespace Nebula.Modules.Chat
 
         public event Action<string, int> OnMessageParsed;
         public event Action<string> OnSystemStatusChanged;
+        /// <summary>Raised when the stream contains [[GIFT:item]] — gameplay grant hook.</summary>
+        public event Action<string> OnGiftReceived;
 
         private INebulaApiService _apiService;
         private string _currentSessionId = "";
@@ -150,7 +152,18 @@ namespace Nebula.Modules.Chat
 
         private void HandleGiftAction(string itemName)
         {
-            Debug.Log($"[Manager] Gift triggered: {itemName}");
+            if (string.IsNullOrWhiteSpace(itemName))
+            {
+                Debug.LogWarning("[Manager] Gift signal ignored: empty item name");
+                return;
+            }
+
+            string cleaned = itemName.Trim();
+            Debug.Log($"[Manager] Gift granted: {cleaned}");
+            OnGiftReceived?.Invoke(cleaned);
+
+            // Light feedback: celebrate with Wave when the animator supports it.
+            HandleAnimationAction("WAVE");
         }
 
         private void HandleAnimationAction(string animName)
