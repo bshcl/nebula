@@ -5,8 +5,19 @@ from sqlalchemy.orm import Session
 from app.models.db_models import ChatSession, InventoryItem
 
 
-def grant_item(db: Session, session_id: str, item_id: str, qty: int = 1) -> dict:
-    """Grant items into a session bag. Returns item_id, qty, and total_qty."""
+def grant_item(
+    db: Session,
+    session_id: str,
+    item_id: str,
+    qty: int = 1,
+    *,
+    commit: bool = True,
+) -> dict:
+    """Grant items into a session bag. Returns item_id, qty, and total_qty.
+
+    Set commit=False when the caller needs to commit inventory with other
+    writes in one transaction (e.g. quest claim + mood update).
+    """
 
     if not session_id or not str(session_id).strip():
         raise ValueError("session_id is required")
@@ -40,15 +51,19 @@ def grant_item(db: Session, session_id: str, item_id: str, qty: int = 1) -> dict
         )
         db.add(existing)
 
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
+    if commit:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+    else:
+        # Flush so callers see persisted identity without ending the transaction.
+        db.flush()
 
     return {
         "item_id": cleaned_item,
         "qty": existing.qty,  # stacked total after grant (MVP)
         "total_qty": existing.qty,
-        "granted_qty": qty,  # optional: how many added this call
+        "granted_qty": qty,  # how many added this call
     }
