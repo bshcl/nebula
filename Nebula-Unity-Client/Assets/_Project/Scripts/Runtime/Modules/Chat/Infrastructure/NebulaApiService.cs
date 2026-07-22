@@ -42,5 +42,20 @@ namespace Nebula.Modules.Chat
                 }
             }
         }
+
+        public async Task<InventoryResponse> GetInventoryAsync(string apiUrl, string sessionId)
+        {
+            // apiUrl example: http://localhost:8000/api/v1
+            string url = $"{apiUrl.TrimEnd('/')}/inventory/{sessionId}";
+            using var req = UnityWebRequest.Get(url);
+            var op = req.SendWebRequest();
+            while (!op.isDone) await Task.Yield();
+
+            if (req.result != UnityWebRequest.Result.Success)
+            {
+                throw new Exception($"Inventory request failed: {req.error}");
+            }
+            return JsonConvert.DeserializeObject<InventoryResponse>(req.downloadHandler.text);
+        }
     }
 }

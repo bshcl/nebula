@@ -107,5 +107,13 @@ namespace Nebula.Modules.Chat
                 dialogueText.text = "NPC is thinking...";
             }
         }
+
+        public void Show() => gameObject.SetActive(true);
+        public void Hide()
+        {
+            if (dialogueText != null)
+                dialogueText.text = string.Empty;
+            gameObject.SetActive(false);
+        }
     }
 }

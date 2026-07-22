@@ -36,6 +36,10 @@ namespace Nebula.Modules.Chat
 
         private string _streamBuffer = string.Empty;
 
+        /// <summary>http://host/api/v1 — derived from the completions URL.</summary>
+        private string ApiV1Root =>
+            apiBaseUrl.Replace("/completions", "").TrimEnd('/');
+
         private void Awake()
         {
             _apiService = new NebulaApiService();
@@ -47,6 +51,19 @@ namespace Nebula.Modules.Chat
                 { "ANIM", HandleAnimationAction },
                 { "SYSTEM", HandleSystemAction }
             };
+        }
+
+        public async Task<List<string>> FetchInventoryLinesAsync()
+        {
+            if (string.IsNullOrEmpty(_currentSessionId))
+                return new List<string>();
+
+            var resp = await _apiService.GetInventoryAsync(ApiV1Root, _currentSessionId);
+            var list = new List<string>();
+            if (resp?.Data?.Items == null) return list;
+            foreach (var item in resp.Data.Items)
+                list.Add($"{item.ItemId} x{item.Qty}");
+            return list;
         }
 
         /// <summary>
