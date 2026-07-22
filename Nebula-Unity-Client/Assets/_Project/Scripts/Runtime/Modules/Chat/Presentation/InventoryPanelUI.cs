@@ -28,10 +28,16 @@ namespace Nebula.Modules.Chat
                 toggleButton.onClick.RemoveListener(OnToggleClicked);
         }
 
-        // async void: required for event/button handlers that await.
-        private async void HandleGiftReceived(string item) => await RefreshAsync();
+        // async void: Unity event/button handlers that await.
+        private async void HandleGiftReceived(string item)
+        {
+            await RefreshAsync();
+        }
 
-        private async void OnToggleClicked() => await RefreshAsync();
+        private async void OnToggleClicked()
+        {
+            await RefreshAsync();
+        }
 
         public async Task RefreshAsync()
         {
@@ -41,7 +47,8 @@ namespace Nebula.Modules.Chat
             itemsText.text = lines.Count == 0
                 ? "(empty)"
                 : string.Join("\n", lines);
-            if (panelRoot != null) panelRoot.SetActive(true);
+            if (panelRoot != null)
+                panelRoot.SetActive(true);
         }
 
         public void Hide()

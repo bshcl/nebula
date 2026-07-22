@@ -3,19 +3,23 @@ using UnityEngine.UI;
 
 namespace Nebula.Modules.Chat
 {
+    /// <summary>
+    /// F-key NPC menu: Talk / Bag / Quest. Subscribes to proximity events.
+    /// Note: UnityEngine.Object must use explicit null checks, not ?.
+    /// </summary>
     public class NpcInteractUI : MonoBehaviour
     {
-        [SerializeField] GameObject interactPrompt;
-        [SerializeField] GameObject interactMenu;
-        [SerializeField] ChatWindowUI chatWindow;
-        [SerializeField] InventoryPanelUI inventoryPanel;
-        [SerializeField] Button btnTalk;
-        [SerializeField] Button btnBag;
-        [SerializeField] Button btnQuest;
+        [SerializeField] private GameObject interactPrompt;
+        [SerializeField] private GameObject interactMenu;
+        [SerializeField] private ChatWindowUI chatWindow;
+        [SerializeField] private InventoryPanelUI inventoryPanel;
+        [SerializeField] private Button btnTalk;
+        [SerializeField] private Button btnBag;
+        [SerializeField] private Button btnQuest;
 
-        bool _inRange = false;
+        private bool _inRange;
 
-        void OnEnable()
+        private void OnEnable()
         {
             NpcInteractTrigger.OnPlayerInRange += HandleRange;
             if (btnTalk != null) btnTalk.onClick.AddListener(OnTalk);
@@ -23,7 +27,7 @@ namespace Nebula.Modules.Chat
             if (btnQuest != null) btnQuest.onClick.AddListener(OnQuest);
         }
 
-        void OnDisable()
+        private void OnDisable()
         {
             NpcInteractTrigger.OnPlayerInRange -= HandleRange;
             if (btnTalk != null) btnTalk.onClick.RemoveListener(OnTalk);
@@ -31,7 +35,7 @@ namespace Nebula.Modules.Chat
             if (btnQuest != null) btnQuest.onClick.RemoveListener(OnQuest);
         }
 
-        void HandleRange(bool inRange)
+        private void HandleRange(bool inRange)
         {
             _inRange = inRange;
             if (!inRange)
@@ -40,50 +44,65 @@ namespace Nebula.Modules.Chat
                 return;
             }
 
-            if (interactPrompt != null) interactPrompt.SetActive(true);
+            if (interactPrompt != null)
+                interactPrompt.SetActive(true);
         }
 
-        void Update()
+        private void Update()
         {
             if (!_inRange) return;
 
-            // Project Settings → Player → Active Input Handling
+            // Requires Active Input Handling = Both (or Input Manager).
             if (Input.GetKeyDown(KeyCode.F))
-            {
-                chatWindow?.Hide();
-                if (interactPrompt != null) interactPrompt.SetActive(false);
-                if (interactMenu != null) interactMenu.SetActive(true);
-            }
+                OpenMenu();
 
             if (Input.GetKeyDown(KeyCode.Escape))
                 CloseAll();
         }
 
-        void OnTalk()
+        private void OpenMenu()
         {
-            if (interactMenu != null) interactMenu.SetActive(false);
-            inventoryPanel?.Hide();
-            chatWindow?.Show();
+            if (chatWindow != null)
+                chatWindow.Hide();
+            if (interactPrompt != null)
+                interactPrompt.SetActive(false);
+            if (interactMenu != null)
+                interactMenu.SetActive(true);
         }
 
-        async void OnBag()
+        private void OnTalk()
         {
-            if (interactMenu != null) interactMenu.SetActive(false);
-            chatWindow?.Hide();
+            if (interactMenu != null)
+                interactMenu.SetActive(false);
+            if (inventoryPanel != null)
+                inventoryPanel.Hide();
+            if (chatWindow != null)
+                chatWindow.Show();
+        }
+
+        private async void OnBag()
+        {
+            if (interactMenu != null)
+                interactMenu.SetActive(false);
+            if (chatWindow != null)
+                chatWindow.Hide();
             if (inventoryPanel != null)
                 await inventoryPanel.RefreshAsync();
         }
 
-        void OnQuest()
+        private void OnQuest()
         {
             Debug.Log("[Interact] Quest claim placeholder");
         }
 
-        void CloseAll()
+        private void CloseAll()
         {
-            if (interactPrompt != null) interactPrompt.SetActive(false);
-            if (interactMenu != null) interactMenu.SetActive(false);
-            chatWindow?.Hide();
+            if (interactPrompt != null)
+                interactPrompt.SetActive(false);
+            if (interactMenu != null)
+                interactMenu.SetActive(false);
+            if (chatWindow != null)
+                chatWindow.Hide();
             if (inventoryPanel != null)
                 inventoryPanel.Hide();
         }
