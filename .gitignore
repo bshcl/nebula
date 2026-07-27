@@ -71,6 +71,7 @@ nebula-api/sessions/*.json
 # Local notes and drafts (not for GitHub)
 /Docs/
 /query
+.cursor/rules/no-career-on-github.mdc
 
 # 系统生成文件
 .DS_Store
