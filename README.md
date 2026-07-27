@@ -116,4 +116,4 @@ See `nebula-api/.env.example` for all options.
 
 ## License
 
-Personal portfolio project. Font licenses: see `Assets/TextMesh Pro/Fonts/` and `NotoSansJP` (OFL).
+Personal learning / open-source project. Font licenses: see `Assets/TextMesh Pro/Fonts/` and `NotoSansJP` (OFL).
