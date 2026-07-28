@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.game.quest_defs import DEFAULT_QUEST_ID
 from app.services import quest_service
 
 router = APIRouter(prefix="/quests", tags=["quests"])
