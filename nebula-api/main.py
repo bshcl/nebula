@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from app.api import chat, inventory
+from app.api import chat, inventory, quests
 from app.core import mcp_manager
 from app.core.config import get_logger, settings
 from app.core.database import init_db
@@ -16,9 +16,7 @@ from app.core.database import init_db
 logger = get_logger(__name__)
 
 if not settings.GOOGLE_MAPS_API_KEY:
-    logger.warning(
-        "GOOGLE_MAPS_API_KEY is missing from .env — Maps MCP may fail to start."
-    )
+    logger.warning("GOOGLE_MAPS_API_KEY is missing from .env — Maps MCP may fail to start.")
 
 
 @asynccontextmanager
@@ -58,6 +56,7 @@ init_db()
 
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(inventory.router, prefix="/api/v1")
+app.include_router(quests.router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,

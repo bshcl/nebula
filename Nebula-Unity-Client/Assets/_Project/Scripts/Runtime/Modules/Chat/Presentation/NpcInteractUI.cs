@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Nebula.Modules.Chat
@@ -16,6 +17,7 @@ namespace Nebula.Modules.Chat
         [SerializeField] private Button btnTalk;
         [SerializeField] private Button btnBag;
         [SerializeField] private Button btnQuest;
+        [SerializeField] private NebulaManager nebulaManager;
 
         private bool _inRange;
 
@@ -50,13 +52,12 @@ namespace Nebula.Modules.Chat
 
         private void Update()
         {
-            if (!_inRange) return;
+            if (!_inRange || Keyboard.current == null) return;
 
-            // Requires Active Input Handling = Both (or Input Manager).
-            if (Input.GetKeyDown(KeyCode.F))
+            if (Keyboard.current.fKey.wasPressedThisFrame)
                 OpenMenu();
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (Keyboard.current.escapeKey.wasPressedThisFrame)
                 CloseAll();
         }
 
@@ -66,8 +67,22 @@ namespace Nebula.Modules.Chat
                 chatWindow.Hide();
             if (interactPrompt != null)
                 interactPrompt.SetActive(false);
+
+            RefreshMenuButtons();
+
             if (interactMenu != null)
                 interactMenu.SetActive(true);
+        }
+
+        private void RefreshMenuButtons()
+        {
+            bool hasSession = nebulaManager != null && nebulaManager.HasSession;
+            Debug.Log($"[Interact] OpenMenu HasSession={hasSession}");
+
+            if (btnBag != null)
+                btnBag.gameObject.SetActive(hasSession);
+            if (btnQuest != null)
+                btnQuest.gameObject.SetActive(hasSession);
         }
 
         private void OnTalk()
@@ -76,6 +91,12 @@ namespace Nebula.Modules.Chat
                 interactMenu.SetActive(false);
             if (inventoryPanel != null)
                 inventoryPanel.Hide();
+
+            // Session starts on Talk; then Bag / Quest become available.
+            if (nebulaManager != null)
+                nebulaManager.EnsureSession();
+            RefreshMenuButtons();
+
             if (chatWindow != null)
                 chatWindow.Show();
         }
@@ -90,9 +111,24 @@ namespace Nebula.Modules.Chat
                 await inventoryPanel.RefreshAsync();
         }
 
-        private void OnQuest()
+        private async void OnQuest()
         {
-            Debug.Log("[Interact] Quest claim placeholder");
+            if (interactMenu != null)
+                interactMenu.SetActive(false);
+            if (chatWindow != null)
+                chatWindow.Hide();
+
+            if (nebulaManager == null)
+            {
+                Debug.LogError("[Interact] NebulaManager not assigned");
+                return;
+            }
+
+            var result = await nebulaManager.ClaimDefaultQuestAsync();
+            Debug.Log($"[Interact] Quest claim result: {result}");
+
+            if (inventoryPanel != null)
+                await inventoryPanel.RefreshAsync();
         }
 
         private void CloseAll()

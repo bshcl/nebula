@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Nebula.Modules.Chat
 {
@@ -16,14 +17,16 @@ namespace Nebula.Modules.Chat
 
         private void Update()
         {
-            if (_cc == null) return;
+            if (_cc == null || Keyboard.current == null) return;
 
             float h = 0f;
             float v = 0f;
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) h = -1f;
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) h = 1f;
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) v = -1f;
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) v = 1f;
+            var kb = Keyboard.current;
+
+            if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) h = -1f;
+            if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) h = 1f;
+            if (kb.sKey.isPressed || kb.downArrowKey.isPressed) v = -1f;
+            if (kb.wKey.isPressed || kb.upArrowKey.isPressed) v = 1f;
 
             Vector3 move = new Vector3(h, 0f, v).normalized;
             _cc.SimpleMove(move * speed);

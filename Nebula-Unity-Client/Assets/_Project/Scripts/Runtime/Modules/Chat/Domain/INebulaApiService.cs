@@ -14,5 +14,11 @@ namespace Nebula.Modules.Chat
         /// Gets the inventory for a session and returns an InventoryResponse.
         /// </summary>
         Task<InventoryResponse> GetInventoryAsync(string apiUrl, string sessionId);
+
+        Task<QuestStatusResponse> GetQuestStatusAsync(string apiUrl, string sessionId, string questId);
+
+        Task<QuestStatusResponse> MarkQuestReadyAsync(string apiUrl, string sessionId, string questId);
+
+        Task<QuestClaimResponse> ClaimQuestAsync(string apiUrl, string sessionId, string questId);
     }
 }

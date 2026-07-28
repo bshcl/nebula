@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -11,6 +12,18 @@ namespace Nebula.Modules.Chat
         [SerializeField] private GameObject panelRoot;
         [SerializeField] private TextMeshProUGUI itemsText;
         [SerializeField] private Button toggleButton;
+        [SerializeField] private Transform gridRoot;
+        [SerializeField] private InventorySlotUI slotTemplate;
+        [SerializeField] private int minimumSlotCount = 12;
+
+        private void Awake()
+        {
+            EnsureRefs();
+
+            // Grid mode: keep old ItemsText off so it cannot throw TMP wrap errors.
+            if (gridRoot != null && slotTemplate != null && itemsText != null)
+                itemsText.gameObject.SetActive(false);
+        }
 
         private void OnEnable()
         {
@@ -41,12 +54,12 @@ namespace Nebula.Modules.Chat
 
         public async Task RefreshAsync()
         {
-            if (nebulaManager == null || itemsText == null) return;
+            if (nebulaManager == null) return;
 
-            var lines = await nebulaManager.FetchInventoryLinesAsync();
-            itemsText.text = lines.Count == 0
-                ? "(empty)"
-                : string.Join("\n", lines);
+            EnsureRefs();
+            var items = await nebulaManager.FetchInventoryItemsAsync();
+            RenderInventory(items);
+
             if (panelRoot != null)
                 panelRoot.SetActive(true);
         }
@@ -55,6 +68,82 @@ namespace Nebula.Modules.Chat
         {
             if (panelRoot != null)
                 panelRoot.SetActive(false);
+        }
+
+        private void EnsureRefs()
+        {
+            if (panelRoot == null)
+                panelRoot = gameObject;
+
+            if (gridRoot == null)
+            {
+                var t = transform.Find("GridRoot");
+                if (t != null)
+                    gridRoot = t;
+            }
+
+            if (slotTemplate == null && gridRoot != null)
+                slotTemplate = gridRoot.GetComponentInChildren<InventorySlotUI>(true);
+        }
+
+        private void RenderInventory(List<InventoryItemDto> items)
+        {
+            if (gridRoot != null && slotTemplate != null)
+            {
+                RenderGrid(items);
+                if (itemsText != null)
+                    itemsText.gameObject.SetActive(false);
+                return;
+            }
+
+            if (itemsText == null) return;
+
+            itemsText.gameObject.SetActive(true);
+            itemsText.text = items.Count == 0
+                ? "(empty)"
+                : string.Join("\n", items.ConvertAll(item => $"{item.ItemId} x{item.Qty}"));
+        }
+
+        private void RenderGrid(List<InventoryItemDto> items)
+        {
+            ClearOldSlots();
+            slotTemplate.gameObject.SetActive(false);
+
+            int rendered = 0;
+            foreach (var item in items)
+            {
+                var slot = CreateSlot();
+                slot.SetData(item.ItemId, item.Qty);
+                rendered++;
+            }
+
+            int total = Mathf.Max(minimumSlotCount, rendered);
+            for (int i = rendered; i < total; i++)
+            {
+                var slot = CreateSlot();
+                slot.SetEmpty();
+            }
+        }
+
+        private InventorySlotUI CreateSlot()
+        {
+            var slot = Instantiate(slotTemplate, gridRoot);
+            slot.gameObject.SetActive(true);
+            return slot;
+        }
+
+        private void ClearOldSlots()
+        {
+            if (gridRoot == null) return;
+
+            for (int i = gridRoot.childCount - 1; i >= 0; i--)
+            {
+                var child = gridRoot.GetChild(i);
+                if (slotTemplate != null && child == slotTemplate.transform)
+                    continue;
+
+                Destroy(child.gameObject);
+            }
         }
     }
 }
