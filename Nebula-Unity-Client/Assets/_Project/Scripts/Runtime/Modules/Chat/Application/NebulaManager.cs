@@ -77,15 +77,29 @@ namespace Nebula.Modules.Chat
             Debug.Log($"[Manager] New session started: {_currentSessionId}");
         }
 
-        public async Task<List<string>> FetchInventoryLinesAsync()
+        public async Task<List<InventoryItemDto>> FetchInventoryItemsAsync()
         {
+            var list = new List<InventoryItemDto>();
             if (string.IsNullOrEmpty(_currentSessionId))
-                return new List<string>();
+                return list;
 
             var resp = await _apiService.GetInventoryAsync(ApiV1Root, _currentSessionId);
-            var list = new List<string>();
             if (resp?.Data?.Items == null) return list;
+
             foreach (var item in resp.Data.Items)
+            {
+                if (item == null) continue;
+                list.Add(item);
+            }
+
+            return list;
+        }
+
+        public async Task<List<string>> FetchInventoryLinesAsync()
+        {
+            var items = await FetchInventoryItemsAsync();
+            var list = new List<string>();
+            foreach (var item in items)
                 list.Add($"{item.ItemId} x{item.Qty}");
             return list;
         }
