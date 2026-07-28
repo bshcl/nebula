@@ -16,7 +16,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api import chat
+from app.api import chat, inventory, quests
 from app.core.database import get_db
 from app.models.db_models import Base
 
@@ -41,7 +41,23 @@ def client() -> TestClient:
 
     app = FastAPI()
     app.include_router(chat.router, prefix="/api/v1")
+    app.include_router(inventory.router, prefix="/api/v1")
+    app.include_router(quests.router, prefix="/api/v1")
     app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture()
+def db_session(client: TestClient):
+    """Yield a DB session bound to the same in-memory engine as `client`."""
+    gen = client.app.dependency_overrides[get_db]()
+    db = next(gen)
+    try:
+        yield db
+    finally:
+        try:
+            next(gen)
+        except StopIteration:
+            pass

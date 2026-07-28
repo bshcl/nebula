@@ -11,6 +11,7 @@ from app.chains.tools import (
     InteractionTools,
     MapTools,
     WorldKnowledgeTools,
+    QuestTools,
 )
 from app.core.config import get_logger, settings
 from app.core.prompts import SOUL_MANAGER_PROMPT, WORLD_OBSERVER_PROMPT
@@ -41,7 +42,12 @@ soul_llm_cloud = create_cloud_llm(settings.BACKUP_MODEL, temperature=0.7)
 # Local fallback via Ollama — no tools bound, for maximum stability
 local_llm = ChatOllama(model=settings.LOCAL_MODEL, temperature=0.0)
 
-SOUL_TOOLS = [InteractionTools.send_gift]
+SOUL_TOOLS = [
+    InteractionTools.send_gift,  # bonus path later; keep for now
+    QuestTools.get_quest_status,
+    QuestTools.mark_quest_ready,
+    QuestTools.claim_quest_reward,
+]
 WORLD_TOOLS = [
     MapTools.search_nearby_places,
     MapTools.get_place_details,

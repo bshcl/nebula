@@ -20,13 +20,20 @@ namespace Nebula.Modules.Chat
         [SerializeField] private Animator npcAnimator;
 
         [Header("API")]
-        [SerializeField] private string apiBaseUrl = "http://localhost:8000/api/v1/completions";
+        [SerializeField] private string apiBaseUrl = "http://127.0.0.1:8000/api/v1/completions";
 
         public event Action<string, int> OnMessageParsed;
         public event Action<string> OnSystemStatusChanged;
+        /// <summary>Raised when the stream contains [[GIFT:item]] — gameplay grant hook.</summary>
+        public event Action<string> OnGiftReceived;
+
+        private const string SessionPrefsKey = "nebula_unity_session_id";
 
         private INebulaApiService _apiService;
         private string _currentSessionId = "";
+
+        /// <summary>True after the first Talk message created a session id.</summary>
+        public bool HasSession => !string.IsNullOrEmpty(_currentSessionId);
 
         private Dictionary<string, Action<string>> _actionHandlers;
 
@@ -34,9 +41,18 @@ namespace Nebula.Modules.Chat
 
         private string _streamBuffer = string.Empty;
 
+        /// <summary>http://host/api/v1 — derived from the completions URL.</summary>
+        private string ApiV1Root =>
+            apiBaseUrl.Replace("/completions", "").TrimEnd('/');
+
+        private const string DefaultQuestId = "quest_first_hello";
+
         private void Awake()
         {
             _apiService = new NebulaApiService();
+
+            // Session is created only when the player clicks Talk — do not restore on Play.
+            _currentSessionId = "";
 
             _actionHandlers = new Dictionary<string, Action<string>>
             {
@@ -48,45 +64,47 @@ namespace Nebula.Modules.Chat
         }
 
         /// <summary>
-        /// Entry point called by the chat UI.
+        /// Creates a session id on first Talk. No-op if one already exists this play.
         /// </summary>
-        public async Task SendUserMessage(string userText)
+        public void EnsureSession()
         {
-            try
-            {
-                if (string.IsNullOrEmpty(_currentSessionId))
-                {
-                    _currentSessionId = "unity-session-" + DateTime.Now.Ticks;
-                    Debug.Log($"[Manager] New session started: {_currentSessionId}");
-                }
+            if (!string.IsNullOrEmpty(_currentSessionId))
+                return;
 
-                var requestData = new ChatRequest
-                {
-                    SessionId = _currentSessionId,
-                    Message = userText,
-                    BotName = botName,
-                    BotPersonality = botPersonality,
-                    History = new List<ChatMessage>()
-                };
-
-                await _apiService.PostChatAsync(apiBaseUrl, requestData, ProcessIncomingChunk);
-
-                // Flush any remaining plain text after the stream ends.
-                if (!string.IsNullOrEmpty(_streamBuffer))
-                {
-                    OnMessageParsed?.Invoke(_streamBuffer, _tempMoodBuffer);
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"[Manager] Chat flow failed: {e.Message}");
-                throw;
-            }
-            finally
-            {
-                _streamBuffer = string.Empty;
-            }
+            _currentSessionId = "unity-session-" + DateTime.Now.Ticks;
+            PlayerPrefs.SetString(SessionPrefsKey, _currentSessionId);
+            PlayerPrefs.Save();
+            Debug.Log($"[Manager] New session started: {_currentSessionId}");
         }
+
+        public async Task<List<InventoryItemDto>> FetchInventoryItemsAsync()
+        {
+            var list = new List<InventoryItemDto>();
+            if (string.IsNullOrEmpty(_currentSessionId))
+                return list;
+
+            var resp = await _apiService.GetInventoryAsync(ApiV1Root, _currentSessionId);
+            if (resp?.Data?.Items == null) return list;
+
+            foreach (var item in resp.Data.Items)
+            {
+                if (item == null) continue;
+                list.Add(item);
+            }
+
+            return list;
+        }
+
+        public async Task<List<string>> FetchInventoryLinesAsync()
+        {
+            var items = await FetchInventoryItemsAsync();
+            var list = new List<string>();
+            foreach (var item in items)
+                list.Add($"{item.ItemId} x{item.Qty}");
+            return list;
+        }
+
+
 
         /// <summary>
         /// Parses each streamed chunk and dispatches signals such as [[MOOD:n]].
@@ -150,7 +168,18 @@ namespace Nebula.Modules.Chat
 
         private void HandleGiftAction(string itemName)
         {
-            Debug.Log($"[Manager] Gift triggered: {itemName}");
+            if (string.IsNullOrWhiteSpace(itemName))
+            {
+                Debug.LogWarning("[Manager] Gift signal ignored: empty item name");
+                return;
+            }
+
+            string cleaned = itemName.Trim();
+            Debug.Log($"[Manager] Gift granted: {cleaned}");
+            OnGiftReceived?.Invoke(cleaned);
+
+            // Light feedback: celebrate with Wave when the animator supports it.
+            HandleAnimationAction("WAVE");
         }
 
         private void HandleAnimationAction(string animName)
@@ -186,6 +215,90 @@ namespace Nebula.Modules.Chat
                 if (param.name == paramName) return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Entry point called by the chat UI.
+        /// </summary>
+        public async Task SendUserMessage(string userText)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_currentSessionId))
+                    EnsureSession();
+
+                var requestData = new ChatRequest
+                {
+                    SessionId = _currentSessionId,
+                    Message = userText,
+                    BotName = botName,
+                    BotPersonality = botPersonality,
+                    History = new List<ChatMessage>()
+                };
+
+                await _apiService.PostChatAsync(apiBaseUrl, requestData, ProcessIncomingChunk);
+
+                // Flush any remaining plain text after the stream ends.
+                if (!string.IsNullOrEmpty(_streamBuffer))
+                {
+                    OnMessageParsed?.Invoke(_streamBuffer, _tempMoodBuffer);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[Manager] Chat flow failed: {e.Message}");
+                throw;
+            }
+            finally
+            {
+                _streamBuffer = string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Turn in default quest: check status first, then ready (if needed) + claim.
+        /// Already-claimed quests return a soft message instead of spamming HTTP 400.
+        /// </summary>
+        public async Task<string> ClaimDefaultQuestAsync()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_currentSessionId))
+                    return "Talk to the NPC first (no session yet)";
+
+                var statusResp = await _apiService.GetQuestStatusAsync(
+                    ApiV1Root, _currentSessionId, DefaultQuestId);
+                string questStatus = statusResp?.Data?.QuestStatus;
+
+                if (questStatus == "claimed")
+                    return "Quest already claimed";
+
+                if (questStatus != "ready_to_claim")
+                {
+                    var readyResp = await _apiService.MarkQuestReadyAsync(
+                        ApiV1Root, _currentSessionId, DefaultQuestId);
+                    questStatus = readyResp?.Data?.QuestStatus;
+                    if (questStatus != "ready_to_claim")
+                        return "Quest not ready yet";
+                }
+
+                var claimResp = await _apiService.ClaimQuestAsync(
+                    ApiV1Root, _currentSessionId, DefaultQuestId);
+                if (claimResp?.Data?.Grant == null)
+                    return "Claim succeeded but grant payload was empty";
+
+                OnGiftReceived?.Invoke(claimResp.Data.Grant.ItemId);
+                return $"Claimed {claimResp.Data.Grant.ItemId} x{claimResp.Data.Grant.GrantedQty}";
+            }
+            catch (Exception e)
+            {
+                // Soften duplicate-claim races that slip past the status check.
+                if (e.Message.IndexOf("already claimed", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return "Quest already claimed";
+
+                Debug.LogError($"[Manager] Claim default quest failed: {e.Message}");
+                return $"Claim failed: {e.Message}";
+            }
         }
     }
 }
