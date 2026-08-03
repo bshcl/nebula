@@ -9,7 +9,7 @@ from app.core.config import get_logger, settings
 from app.core.rag_engine import rag_engine
 from app.core.database import SessionLocal
 from app.game.quest_defs import DEFAULT_QUEST_ID
-from app.services import quest_service
+from app.services import quest_service, inventory_service
 
 logger = get_logger(__name__)
 
@@ -145,13 +145,18 @@ class InteractionTools:
 
     @staticmethod
     @tool
-    def send_gift(item_name: str) -> str:
+    def send_gift(item_name: str, state: Annotated[dict, InjectedState] = None) -> str:
         """
         Grant a gift item to the player inventory (gameplay side effect).
         Call only when mood >= 90 and the player explicitly asks for a gift.
         Args:
             item_name: Short snake_case or english id for the gift, e.g. star_candy.
+            state: Injected state containing session_id.
         """
+        session_id = (state or {}).get("session_id") or ""
+        if not session_id:
+            return "System message: Missing session_id in state."
+
         cleaned = (item_name or "").strip().replace(" ", "_")
         if not cleaned:
             return (
@@ -159,12 +164,19 @@ class InteractionTools:
                 "Do not emit a GIFT signal. Apologize in character."
             )
 
-        logger.info("Gift triggered: item=%s", cleaned)
-        return (
-            f"System message: Successfully granted {cleaned}. "
-            f"In your player-facing reply, include the exact signal [[GIFT:{cleaned}]] "
-            "and confirm delivery in character (tsundere tone)."
-        )
+        db = SessionLocal()
+        try:
+            result = inventory_service.grant_item(db, session_id, cleaned)
+            item_id = result["item_id"]
+            return (
+                "System message: Successfully granted. "
+                + json.dumps(result, ensure_ascii=False)
+                + f" Include [[GIFT:{item_id}]] in your reply to the player."
+            )
+        except ValueError as exc:
+            return f"System message: {exc}"
+        finally:
+            db.close()
 
 
 class WorldKnowledgeTools:
