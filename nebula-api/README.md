@@ -1,6 +1,6 @@
 # Nebula API
 
-FastAPI backend for the Nebula NPC system: LangGraph workflow (sentiment → world → soul), SSE streaming chat, SQLite persistence, Chroma RAG, and Google Maps MCP.
+FastAPI backend for the Nebula NPC system: LangGraph workflow (sentiment → world → soul), SSE-style streaming chat, SQLite persistence (sessions, inventory, quests), Chroma RAG, and Google Maps MCP.
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ The response uses `Content-Type: text/event-stream` but the body is a **raw UTF-
 |--------|----------|
 | Format | Plain text chunks as the LLM generates tokens |
 | End signal | Final chunk may include `[[MOOD:{0-100}]]` for Unity mood sync |
-| In-band tags | NPC may emit `[[ANIM:WAVE]]`, `[[ANIM:ANGRY]]`, etc. |
+| In-band tags | NPC may emit `[[ANIM:WAVE]]`, `[[GIFT:item_id]]`, etc. |
 | Unity client | `NebulaStreamHandler` reads bytes directly via `DownloadHandlerScript` |
 
 Example stream:
@@ -70,6 +70,10 @@ If you integrate a new client, read the response body incrementally; do not expe
 | `GET` | `/api/v1/sessions` | List session IDs |
 | `GET` | `/api/v1/sessions/{id}` | Session metadata + message history |
 | `DELETE` | `/api/v1/sessions/{id}` | Delete session and messages |
+| `GET` | `/api/v1/inventory/{session_id}` | List stacked inventory items for a session |
+| `GET` | `/api/v1/quests/{session_id}/{quest_id}` | Quest status (`not_started` / `ready_to_claim` / `claimed` / …) |
+| `POST` | `/api/v1/quests/{session_id}/{quest_id}/ready` | Mark quest `ready_to_claim` |
+| `POST` | `/api/v1/quests/{session_id}/{quest_id}/claim` | Claim reward (grants item + mood delta) |
 
 ### Chat request body (`ChatRequest`)
 
@@ -85,7 +89,13 @@ If you integrate a new client, read the response body incrementally; do not expe
 
 `history` is a legacy field from the Unity client; conversation context is loaded from SQLite on the server.
 
-Stream may include in-band signals such as `[[MOOD:75]]` and `[[ANIM:WAVE]]`.
+Stream may include in-band signals such as `[[MOOD:75]]`, `[[ANIM:WAVE]]`, and `[[GIFT:item_id]]`.
+
+### Inventory and quests (server authority)
+
+- Mutations go through `inventory_service.grant_item` and `quest_service` (HTTP routes and Soul tools share these services).
+- Soul Agent tools (`get_quest_status`, `mark_quest_ready`, `claim_quest_reward`, `send_gift`) inject `session_id` from graph state and call the same services.
+- `send_gift` persists via `grant_item`, then instructs the model to emit `[[GIFT:item_id]]` only after a successful grant. The in-band tag is a Unity presentation cue, not the source of truth.
 
 ## Scripts
 
@@ -106,7 +116,7 @@ ruff check app tests
 pytest
 ```
 
-CI runs the same checks on pull requests (see `.github/workflows/nebula-api-ci.yml`).
+CI runs the same checks on pull requests that touch `nebula-api/**` (see `.github/workflows/nebula-api-ci.yml`).
 
 ## Docker
 
@@ -127,7 +137,7 @@ The image includes Python 3.12 and Node.js/npx for the Google Maps MCP subproces
 
 ## Unity client
 
-Point the Unity client (`Nebula-Unity-Client`) at `http://127.0.0.1:8000/api/v1/completions`. See the monorepo root README for SSE and in-band signaling details.
+Point the Unity client (`Nebula-Unity-Client`) at `http://127.0.0.1:8000/api/v1/completions`. Inventory and quest buttons call the REST routes above. See the monorepo root README for the F-interact loop and in-band signaling.
 
 ## Project layout
 
@@ -135,10 +145,11 @@ Point the Unity client (`Nebula-Unity-Client`) at `http://127.0.0.1:8000/api/v1/
 nebula-api/
 ├── main.py              # FastAPI entrypoint + MCP lifespan
 ├── app/
-│   ├── api/             # HTTP routes
+│   ├── api/             # HTTP routes (chat, inventory, quests)
 │   ├── chains/          # LangGraph + agents + tools
 │   ├── core/            # config, database, RAG, prompts
+│   ├── game/            # Quest / item definitions (static defs)
 │   ├── models/          # ORM, Pydantic schemas, graph state
-│   └── services/        # DB helpers, background AI tasks
+│   └── services/        # inventory, quest, DB helpers, background AI
 └── scripts/             # One-off setup utilities
 ```
