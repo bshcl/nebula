@@ -10,14 +10,21 @@ namespace Nebula.Modules.Chat
 
         private CharacterController _cc;
 
+        private bool _locked = false;
+
         private void Awake()
         {
             _cc = GetComponent<CharacterController>();
         }
 
+        public void SetLocked(bool locked)
+        {
+            _locked = locked;
+        }
+
         private void Update()
         {
-            if (_cc == null || Keyboard.current == null) return;
+            if (_cc == null || Keyboard.current == null || _locked) return;
 
             float h = 0f;
             float v = 0f;
