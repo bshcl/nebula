@@ -2389,6 +2389,7 @@ MonoBehaviour:
   btnBag: {fileID: 279372686}
   btnQuest: {fileID: 764802842}
   nebulaManager: {fileID: 1057890723}
+  playerMove: {fileID: 654155907}
 --- !u!1 &1073133630
 GameObject:
   m_ObjectHideFlags: 0
@@ -4064,6 +4065,7 @@ MonoBehaviour:
   btnBag: {fileID: 279372686}
   btnQuest: {fileID: 764802842}
   nebulaManager: {fileID: 1057890723}
+  playerMove: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

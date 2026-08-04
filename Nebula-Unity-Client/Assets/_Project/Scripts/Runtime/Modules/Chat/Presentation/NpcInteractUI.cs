@@ -18,8 +18,15 @@ namespace Nebula.Modules.Chat
         [SerializeField] private Button btnBag;
         [SerializeField] private Button btnQuest;
         [SerializeField] private NebulaManager nebulaManager;
+        [SerializeField] private SimplePlayerMove playerMove;
 
         private bool _inRange;
+
+        private void SetPlayerLocked(bool locked)
+        {
+            if (playerMove != null)
+                playerMove.SetLocked(locked);
+        }
 
         private void OnEnable()
         {
@@ -35,6 +42,7 @@ namespace Nebula.Modules.Chat
             if (btnTalk != null) btnTalk.onClick.RemoveListener(OnTalk);
             if (btnBag != null) btnBag.onClick.RemoveListener(OnBag);
             if (btnQuest != null) btnQuest.onClick.RemoveListener(OnQuest);
+            SetPlayerLocked(false);
         }
 
         private void HandleRange(bool inRange)
@@ -72,6 +80,8 @@ namespace Nebula.Modules.Chat
 
             if (interactMenu != null)
                 interactMenu.SetActive(true);
+
+            SetPlayerLocked(true);
         }
 
         private void RefreshMenuButtons()
@@ -87,6 +97,8 @@ namespace Nebula.Modules.Chat
 
         private void OnTalk()
         {
+            SetPlayerLocked(true);
+
             if (interactMenu != null)
                 interactMenu.SetActive(false);
             if (inventoryPanel != null)
@@ -103,6 +115,8 @@ namespace Nebula.Modules.Chat
 
         private async void OnBag()
         {
+            SetPlayerLocked(true);
+
             if (interactMenu != null)
                 interactMenu.SetActive(false);
             if (chatWindow != null)
@@ -113,6 +127,8 @@ namespace Nebula.Modules.Chat
 
         private async void OnQuest()
         {
+            SetPlayerLocked(true);
+
             if (interactMenu != null)
                 interactMenu.SetActive(false);
             if (chatWindow != null)
@@ -121,6 +137,7 @@ namespace Nebula.Modules.Chat
             if (nebulaManager == null)
             {
                 Debug.LogError("[Interact] NebulaManager not assigned");
+                SetPlayerLocked(false);
                 return;
             }
 
@@ -141,6 +158,8 @@ namespace Nebula.Modules.Chat
                 chatWindow.Hide();
             if (inventoryPanel != null)
                 inventoryPanel.Hide();
+
+            SetPlayerLocked(false);
         }
     }
 }
