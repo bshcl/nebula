@@ -27,7 +27,7 @@ def test_get_quest_status(client, db_session) -> None:
     assert body["status"] == "success"
     assert body["data"]["quest_id"] == QUEST_ID
     assert body["data"]["status"] == "not_started"
-    assert body["data"]["reward_item_id"] == "hero_badge"
+    assert body["data"]["reward_item_id"] == "navigator_emblem"
 
 
 def test_ready_then_claim(client, db_session) -> None:
@@ -41,7 +41,7 @@ def test_ready_then_claim(client, db_session) -> None:
     assert claim.status_code == 200
     data = claim.json()["data"]
     assert data["status"] == "claimed"
-    assert data["grant"]["item_id"] == "hero_badge"
+    assert data["grant"]["item_id"] == "navigator_emblem"
     assert data["grant"]["granted_qty"] == 1
     assert data["mood"] == 75  # 50 + 25
 

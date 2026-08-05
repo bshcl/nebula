@@ -17,8 +17,8 @@ def test_get_inventory_stacked_items(client, db_session) -> None:
     )
     db_session.commit()
 
-    grant_item(db_session, SESSION_ID, "hero_badge", qty=1)
-    grant_item(db_session, SESSION_ID, "hero_badge", qty=1)
+    grant_item(db_session, SESSION_ID, "navigator_emblem", qty=1)
+    grant_item(db_session, SESSION_ID, "navigator_emblem", qty=1)
     grant_item(db_session, SESSION_ID, "star_candy", qty=3)
 
     response = client.get(f"/api/v1/inventory/{SESSION_ID}")
@@ -29,7 +29,7 @@ def test_get_inventory_stacked_items(client, db_session) -> None:
     assert body["data"]["session_id"] == SESSION_ID
     # list_inventory orders by item_id ascending
     assert body["data"]["items"] == [
-        {"item_id": "hero_badge", "qty": 2},
+        {"item_id": "navigator_emblem", "qty": 2},
         {"item_id": "star_candy", "qty": 3},
     ]
 

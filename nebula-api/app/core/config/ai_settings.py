@@ -14,7 +14,9 @@ class AISettings(BaseSettings):
     PRIMARY_MODEL: str = "gemini-3.5-flash"
     BACKUP_MODEL: str = "gemini-3.1-flash-lite"
     LOCAL_MODEL: str = "llama3.2"
-    GROQ_FALLBACK_MODEL: str = "llama-3.1-70b-versatile"
+    # Groq retired llama-3.1-70b; llama-3.3-70b shuts down 2026-08-16.
+    # Prefer current production free-tier model (see console.groq.com/docs/models).
+    GROQ_FALLBACK_MODEL: str = "openai/gpt-oss-20b"
 
     # NPC mood boundaries used by the LangGraph workflow
     ANGRY_THRESHOLD: int = 20

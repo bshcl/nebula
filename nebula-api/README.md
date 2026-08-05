@@ -83,7 +83,7 @@ If you integrate a new client, read the response body incrementally; do not expe
   "message": "Hello Sakura",
   "history": [],
   "bot_name": "Sakura",
-  "bot_personality": "tsundere NPC"
+  "bot_personality": "aristocratic tsundere ojousama, short replies, flusters when praised"
 }
 ```
 

@@ -3,22 +3,32 @@ using UnityEngine;
 
 namespace Nebula.Modules.Chat
 {
+    /// <summary>
+    /// Drives resonance visuals on an aura/core renderer instead of tinting skin.
+    /// </summary>
     public class MoodVisualizer : MonoBehaviour
     {
         [Header("Manager")]
         [SerializeField] private NebulaManager nebulaManager;
 
         [Header("Visual Settings")]
+        [SerializeField] private Renderer auraRenderer;
         [SerializeField] private Renderer npcRenderer;
-        [SerializeField] private Color happyColor = Color.green;
-        [SerializeField] private Color neutralColor = Color.white;
-        [SerializeField] private Color angryColor = Color.red;
-        [SerializeField] private Color offLineColor = Color.gray;
+        [SerializeField] private Color happyColor = new Color(0.2f, 1f, 0.65f, 1f);
+        [SerializeField] private Color neutralColor = new Color(0.35f, 0.85f, 1f, 1f);
+        [SerializeField] private Color angryColor = new Color(1f, 0.25f, 0.35f, 1f);
+        [SerializeField] private Color offLineColor = new Color(0.35f, 0.35f, 0.4f, 1f);
         [SerializeField] private float transitionDuration = 1.0f;
+        [SerializeField] private float emissionBoost = 2.5f;
 
         private bool _isOffline;
         private Color _lastMoodColor = Color.white;
         private Coroutine _activeTransition;
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
+        private static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
+
+        private Renderer TargetRenderer => auraRenderer != null ? auraRenderer : npcRenderer;
 
         private void OnEnable()
         {
@@ -55,7 +65,7 @@ namespace Nebula.Modules.Chat
 
         private void UpdateVisuals(string text, int mood)
         {
-            if (npcRenderer == null) return;
+            if (TargetRenderer == null) return;
 
             Color targetColor = CalculateMoodColor(mood);
             _lastMoodColor = targetColor;
@@ -67,6 +77,7 @@ namespace Nebula.Modules.Chat
 
         private void StartColorTransition(Color targetColor)
         {
+            if (TargetRenderer == null) return;
             if (_activeTransition != null) StopCoroutine(_activeTransition);
 
             _activeTransition = StartCoroutine(ColorLerpRoutine(targetColor));
@@ -75,20 +86,51 @@ namespace Nebula.Modules.Chat
         private IEnumerator ColorLerpRoutine(Color targetColor)
         {
             float elapsed = 0f;
-            Color startColor = npcRenderer.material.color;
+            Material mat = TargetRenderer.material;
+            Color startColor = ReadColor(mat);
 
             while (elapsed < transitionDuration)
             {
                 elapsed += Time.deltaTime;
                 float t = elapsed / transitionDuration;
-
-                npcRenderer.material.color = Color.Lerp(startColor, targetColor, t);
-
+                ApplyColor(mat, Color.Lerp(startColor, targetColor, t));
                 yield return null;
             }
 
-            npcRenderer.material.color = targetColor;
+            ApplyColor(mat, targetColor);
             _activeTransition = null;
+        }
+
+        private void ApplyColor(Material mat, Color color)
+        {
+            if (mat.HasProperty(BaseColorId))
+                mat.SetColor(BaseColorId, color);
+            else if (mat.HasProperty(ColorId))
+                mat.SetColor(ColorId, color);
+            else
+                mat.color = color;
+
+            if (mat.HasProperty(EmissionColorId))
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor(EmissionColorId, color * emissionBoost);
+            }
+        }
+
+        private Color ReadColor(Material mat)
+        {
+            if (mat.HasProperty(EmissionColorId))
+            {
+                Color e = mat.GetColor(EmissionColorId);
+                if (e.maxColorComponent > 0.01f)
+                    return e / Mathf.Max(emissionBoost, 0.01f);
+            }
+
+            if (mat.HasProperty(BaseColorId))
+                return mat.GetColor(BaseColorId);
+            if (mat.HasProperty(ColorId))
+                return mat.GetColor(ColorId);
+            return mat.color;
         }
 
         private Color CalculateMoodColor(int mood)
