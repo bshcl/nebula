@@ -1,10 +1,10 @@
 import re
-from typing import Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 
 from app.chains.agents import local_llm, soul_llm_cloud
+from app.chains.routing import post_analyzer_router
 from app.core.config import get_logger, settings
 from app.core.prompts import SENTIMENT_ANALYZER_PROMPT, SOUL_MANAGER_PROMPT
 from app.core.request_context import get_trace
@@ -128,33 +128,6 @@ def npc_angry(state: CombinedState) -> dict[str, list[AIMessage]]:
             AIMessage(content=("（NPC glares at you）I'm in a terrible mood — leave me alone!"))
         ]
     }
-
-
-def mood_router(state: CombinedState) -> Literal["angry", "normal"]:
-    """Route to angry or normal path based on current mood."""
-    if state["mood"] < settings.ANGRY_THRESHOLD:
-        return "angry"
-    return "normal"
-
-
-def post_analyzer_router(state: CombinedState) -> Literal["angry", "world", "soul"]:
-    """Route to angry, world, or soul path based on mood and SKIP_WORLD_NODE."""
-    route = mood_router(state)
-    if route == "angry":
-        trace = get_trace()
-        if trace:
-            trace.mark_route("angry")
-        return "angry"
-    if settings.SKIP_WORLD_NODE:
-        logger.info("Demo mode: skipping world_node")
-        trace = get_trace()
-        if trace:
-            trace.mark_route("soul")
-        return "soul"
-    trace = get_trace()
-    if trace:
-        trace.mark_route("world")
-    return "world"
 
 
 builder = StateGraph(CombinedState)
