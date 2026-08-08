@@ -7,6 +7,7 @@ from langgraph.graph import END, START, StateGraph
 from app.chains.agents import local_llm, soul_llm_cloud
 from app.core.config import get_logger, settings
 from app.core.prompts import SENTIMENT_ANALYZER_PROMPT, SOUL_MANAGER_PROMPT
+from app.core.request_context import get_trace
 from app.models.combined_state import CombinedState
 
 logger = get_logger(__name__)
@@ -21,6 +22,9 @@ async def call_world_agent(state: CombinedState) -> dict[str, list[BaseMessage]]
     logger.debug("Entering World node (cloud path)")
 
     if world_agent_cloud is None:
+        trace = get_trace()
+        if trace:
+            trace.mark_fallback("world_agent_unavailable")
         return {
             "messages": [
                 AIMessage(content="System warning: World perception module is not running.")
@@ -34,6 +38,9 @@ async def call_world_agent(state: CombinedState) -> dict[str, list[BaseMessage]]
         return {"messages": [last_msg]}
     except Exception as exc:
         logger.info("World node cloud fallback triggered: %s", exc)
+        trace = get_trace()
+        if trace:
+            trace.mark_fallback("world_cloud")
         return {
             "messages": [
                 AIMessage(
@@ -65,7 +72,9 @@ async def call_soul_agent(state: CombinedState) -> dict[str, list[BaseMessage]]:
         return {"messages": result["messages"]}
     except Exception as exc:
         logger.info("Soul node cloud fallback — switching to local Ollama: %s", exc)
-
+        trace = get_trace()
+        if trace:
+            trace.mark_fallback("soul_local_ollama")
         offline_instruction = SOUL_MANAGER_PROMPT.format(
             mood=state["mood"], summary=state.get("summary", "")
         )
@@ -101,7 +110,9 @@ def analyze_sentiment(state: CombinedState) -> dict[str, int]:
     except Exception as exc:
         logger.info("Sentiment analyzer fallback — mood unchanged: %s", exc)
         score = 0
-
+        trace = get_trace()
+        if trace:
+            trace.mark_fallback("sentiment_analyzer")
     new_mood = max(
         settings.MOOD_MIN,
         min(settings.MOOD_MAX, state["mood"] + score),
@@ -130,10 +141,19 @@ def post_analyzer_router(state: CombinedState) -> Literal["angry", "world", "sou
     """Route to angry, world, or soul path based on mood and SKIP_WORLD_NODE."""
     route = mood_router(state)
     if route == "angry":
+        trace = get_trace()
+        if trace:
+            trace.mark_route("angry")
         return "angry"
     if settings.SKIP_WORLD_NODE:
         logger.info("Demo mode: skipping world_node")
+        trace = get_trace()
+        if trace:
+            trace.mark_route("soul")
         return "soul"
+    trace = get_trace()
+    if trace:
+        trace.mark_route("world")
     return "world"
 
 
