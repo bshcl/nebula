@@ -126,8 +126,8 @@ See `nebula-api/.env.example` for all options.
 | | Unity client 0–3 | ✅ streaming UI, modular layout, API URL + JP fonts |
 | | Demo & Ship | ✅ Docker, `/health`, README, `demo.ps1` ([#23](https://github.com/bshcl/nebula/pull/23), [#24](https://github.com/bshcl/nebula/pull/24)) |
 | **Phase 1** — gameplay loop | Quests, inventory, gift grant, NPC F-interact | ✅ claim loop, grid bag, `send_gift`→`grant_item`, move lock ([#27](https://github.com/bshcl/nebula/pull/27), [#29](https://github.com/bshcl/nebula/pull/29), [#30](https://github.com/bshcl/nebula/pull/30)) |
-| **Phase 1** — quality | Request observability + offline route eval | ✅ `feat/request-observability` |
-| **Phase 1** — next | Guardrails | ⏳ upcoming |
+| **Phase 1** — quality | Observability + route eval + output guardrails | ✅ `feat/request-observability` |
+| **Phase 1** — next | (open) harden eval / streaming guardrails as needed | ⏳ optional |
 
 ## License
 

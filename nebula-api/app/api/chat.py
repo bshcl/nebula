@@ -14,6 +14,7 @@ from app.core.config import get_logger
 from app.core.database import get_db
 from app.core.utils import ensure_string
 from app.core.request_context import clear_trace, start_trace
+from app.core.config.guardrails import sanitize_npc_reply
 from app.models.schemas import ChatRequest
 from app.services import ai_tasks, db_service
 from app.services.memory_service import MemoryService
@@ -92,6 +93,17 @@ async def graph_streamer(
                 yield token
 
         yield f"[[MOOD:{final_mood}]]"
+
+        guarded = sanitize_npc_reply(full_response)
+        if guarded.changed:
+            for name in guarded.violations:
+                trace.mark_fallback(f"guardrail:{name}")
+            logger.info(
+                "guardrail_sanitized session=%s violations=%s",
+                payload.session_id,
+                guarded.violations,
+            )
+        full_response = guarded.text
 
         db_service.save_message(db, payload.session_id, "assistant", full_response)
         db_service.upsert_chat_session(
