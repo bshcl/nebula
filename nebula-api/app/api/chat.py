@@ -13,9 +13,12 @@ from app.chains.npc_graph import npc_brain
 from app.core.config import get_logger
 from app.core.database import get_db
 from app.core.utils import ensure_string
+from app.core.request_context import clear_trace, start_trace
+from app.core.config.guardrails import sanitize_npc_reply
 from app.models.schemas import ChatRequest
 from app.services import ai_tasks, db_service
 from app.services.memory_service import MemoryService
+
 
 logger = get_logger(__name__)
 
@@ -36,67 +39,86 @@ async def graph_streamer(
     existing_session = db_service.get_chat_session_full(db, payload.session_id)
     current_mood = existing_session.mood if existing_session else 50
 
-    prior_messages = MemoryService.get_unarchived_messages(db, payload.session_id)
-    if (
-        prior_messages
-        and prior_messages[-1].role == "user"
-        and prior_messages[-1].content == payload.message
-    ):
-        prior_messages = prior_messages[:-1]
+    trace = start_trace(session_id=payload.session_id, mood_before=current_mood)
+    try:
+        prior_messages = MemoryService.get_unarchived_messages(db, payload.session_id)
+        if (
+            prior_messages
+            and prior_messages[-1].role == "user"
+            and prior_messages[-1].content == payload.message
+        ):
+            prior_messages = prior_messages[:-1]
 
-    history_messages: list[HumanMessage | AIMessage] = []
-    for msg in prior_messages:
-        if msg.role == "user":
-            history_messages.append(HumanMessage(content=msg.content))
-        elif msg.role == "assistant":
-            history_messages.append(AIMessage(content=msg.content))
+        history_messages: list[HumanMessage | AIMessage] = []
+        for msg in prior_messages:
+            if msg.role == "user":
+                history_messages.append(HumanMessage(content=msg.content))
+            elif msg.role == "assistant":
+                history_messages.append(AIMessage(content=msg.content))
 
-    initial_state = {
-        "messages": history_messages + [HumanMessage(content=payload.message)],
-        "mood": current_mood,
-        "summary": existing_session.summary if existing_session else "",
-        "location": DEFAULT_LOCATION,
-        "weather": DEFAULT_WEATHER,
-        "remaining_steps": LANGGRAPH_REMAINING_STEPS,
-        "session_id": payload.session_id,
-    }
+        initial_state = {
+            "messages": history_messages + [HumanMessage(content=payload.message)],
+            "mood": current_mood,
+            "summary": existing_session.summary if existing_session else "",
+            "location": DEFAULT_LOCATION,
+            "weather": DEFAULT_WEATHER,
+            "remaining_steps": LANGGRAPH_REMAINING_STEPS,
+            "session_id": payload.session_id,
+        }
 
-    full_response = ""
-    final_mood = current_mood
+        full_response = ""
+        final_mood = current_mood
 
-    async for mode, chunk in npc_brain.astream(
-        initial_state,
-        stream_mode=["messages", "updates"],
-    ):
-        if mode == "updates":
-            for node_name, output in chunk.items():
-                logger.debug("LangGraph event: %s", {node_name: output})
-                if "mood" in output:
-                    final_mood = output["mood"]
-        elif mode == "messages":
-            message_chunk, metadata = chunk
-            node_name = metadata.get("langgraph_node", "")
-            if node_name not in ("soul_node", "angry_node"):
-                continue
+        async for mode, chunk in npc_brain.astream(
+            initial_state,
+            stream_mode=["messages", "updates"],
+        ):
+            if mode == "updates":
+                for node_name, output in chunk.items():
+                    trace.mark_node(node_name)
+                    logger.debug("LangGraph event: %s", {node_name: output})
+                    if "mood" in output:
+                        final_mood = output["mood"]
+            elif mode == "messages":
+                message_chunk, metadata = chunk
+                node_name = metadata.get("langgraph_node", "")
+                if node_name not in ("soul_node", "angry_node"):
+                    continue
 
-            token = ensure_string(message_chunk.content)
-            if not token:
-                continue
+                token = ensure_string(message_chunk.content)
+                if not token:
+                    continue
 
-            full_response += token
-            yield token
+                full_response += token
+                yield token
 
-    yield f"[[MOOD:{final_mood}]]"
+        yield f"[[MOOD:{final_mood}]]"
 
-    db_service.save_message(db, payload.session_id, "assistant", full_response)
-    db_service.upsert_chat_session(
-        db, payload.session_id, payload.bot_name, payload.bot_personality, final_mood
-    )
-    count = MemoryService.get_unarchived_messages_count(db, payload.session_id)
-    if count >= 3:
-        background_tasks.add_task(ai_tasks.generate_title_task, payload.session_id, llm)
-    if count >= 10:
-        background_tasks.add_task(ai_tasks.compress_memory_task, payload.session_id, llm)
+        guarded = sanitize_npc_reply(full_response)
+        if guarded.changed:
+            for name in guarded.violations:
+                trace.mark_fallback(f"guardrail:{name}")
+            logger.info(
+                "guardrail_sanitized session=%s violations=%s",
+                payload.session_id,
+                guarded.violations,
+            )
+        full_response = guarded.text
+
+        db_service.save_message(db, payload.session_id, "assistant", full_response)
+        db_service.upsert_chat_session(
+            db, payload.session_id, payload.bot_name, payload.bot_personality, final_mood
+        )
+        count = MemoryService.get_unarchived_messages_count(db, payload.session_id)
+        if count >= 3:
+            background_tasks.add_task(ai_tasks.generate_title_task, payload.session_id, llm)
+        if count >= 10:
+            background_tasks.add_task(ai_tasks.compress_memory_task, payload.session_id, llm)
+
+        trace.mood_after = final_mood
+        logger.info("chat_turn_complete %s", trace.summary_fields())
+    finally:
+        clear_trace()
 
 
 @router.post("/completions")

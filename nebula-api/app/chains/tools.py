@@ -48,7 +48,8 @@ class QuestTools:
     ) -> str:
         """
         Mark a quest as ready_to_claim after the player finished the objective.
-        For quest_first_hello: call when the player has greeted Sakura clearly.
+        For quest_first_hello: call when the player has greeted Sakura /
+        confirmed first rendezvous after the landing clearly.
         Do NOT claim rewards here — only change status.
         """
 
@@ -186,7 +187,8 @@ class WorldKnowledgeTools:
     @tool
     async def query_nebula_lore(query: str) -> str:
         """
-        Query official lore about Nebula System, TYORA, Sakura, or world rules.
+        Query official lore about Nebula System, TYORA, Sakura, the space journey,
+        emergency landing, or world rules.
         Args:
             query: Topic or question to look up in the knowledge base.
         """

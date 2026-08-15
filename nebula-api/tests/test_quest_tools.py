@@ -35,7 +35,7 @@ def tool_db(monkeypatch):
     seed.commit()
     seed.close()
 
-    # Tools import SessionLocal into app.chains.tools — patch that binding.
+    # Tools import SessionLocal into app.chains.tools  Epatch that binding.
     monkeypatch.setattr("app.chains.tools.SessionLocal", TestSession)
     return TestSession
 
@@ -71,8 +71,8 @@ def test_mark_and_claim_via_tools(tool_db):
         {"quest_id": DEFAULT_QUEST_ID, "state": _state()}
     )
     assert "Claim success" in claimed
-    assert "[[GIFT:hero_badge]]" in claimed
-    assert "hero_badge" in claimed
+    assert "[[GIFT:navigator_emblem]]" in claimed
+    assert "navigator_emblem" in claimed
 
 
 def test_claim_via_tool_is_idempotent(tool_db):

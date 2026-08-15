@@ -54,7 +54,7 @@ def test_grant_item_stacks_qty(db):
 def test_grant_two_different_items(db):
     """Different item_ids should create two independent inventory rows."""
     a = grant_item(db, TEST_SESSION_ID, "star_candy", qty=1)
-    b = grant_item(db, TEST_SESSION_ID, "hero_badge", qty=1)
+    b = grant_item(db, TEST_SESSION_ID, "navigator_emblem", qty=1)
     assert a["qty"] == 1
     assert b["qty"] == 1
     assert a["item_id"] != b["item_id"]

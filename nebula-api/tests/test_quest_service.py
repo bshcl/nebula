@@ -45,7 +45,7 @@ def test_claim_grants_item_and_mood(db):
     result = claim_quest_reward(db, TEST_SESSION_ID, TEST_QUEST_ID)
 
     assert result["status"] == "claimed"
-    assert result["grant"]["item_id"] == "hero_badge"
+    assert result["grant"]["item_id"] == "navigator_emblem"
     assert result["grant"]["granted_qty"] == 1
     assert result["mood"] == 75  # 50 + 25
 

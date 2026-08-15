@@ -71,7 +71,13 @@ nebula-api/sessions/*.json
 # Local notes and drafts (not for GitHub)
 /Docs/
 /query
+/ArtStaging/
 .cursor/rules/no-career-on-github.mdc
+
+# Large third-party Unity packages (import locally; see Assets/ThirdParty/README.md)
+Nebula-Unity-Client/Assets/ThirdParty/**
+!Nebula-Unity-Client/Assets/ThirdParty/README.md
+!Nebula-Unity-Client/Assets/ThirdParty/README.md.meta
 
 # 系统生成文件
 .DS_Store

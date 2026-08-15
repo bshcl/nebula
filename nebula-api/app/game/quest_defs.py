@@ -14,8 +14,8 @@ class QuestDef(TypedDict):
 QUESTS: dict[str, QuestDef] = {
     "quest_first_hello": {
         "quest_id": "quest_first_hello",
-        "title": "Say hello to Sakura",
-        "reward_item_id": "hero_badge",
+        "title": "Confirm rendezvous with Sakura",
+        "reward_item_id": "navigator_emblem",
         "reward_qty": 1,
         "mood_delta": 25,
     },

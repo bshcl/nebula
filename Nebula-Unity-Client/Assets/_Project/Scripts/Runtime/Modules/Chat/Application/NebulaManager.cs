@@ -14,7 +14,7 @@ namespace Nebula.Modules.Chat
     {
         [Header("NPC Settings")]
         [SerializeField] private string botName = "Sakura";
-        [SerializeField] private string botPersonality = "tsundere professional 3D guide";
+        [SerializeField] private string botPersonality = "aristocratic tsundere ojousama, short replies, flusters when praised, brilliant navigator soul";
 
         [Header("Animation")]
         [SerializeField] private Animator npcAnimator;
