@@ -8,10 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from app.api import chat, inventory, quests
-from app.core import mcp_manager
-from app.core.config import get_logger, settings
-from app.core.database import init_db
+from app.agentkit.integrations import mcp_manager
+from app.api.v1 import api_router
+from app.config import get_logger, settings
+from app.infra.database import init_db
 
 logger = get_logger(__name__)
 
@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
                 mcp_manager.mcp_session = session
                 logger.info("MCP session stored in mcp_manager.")
 
-                from app.chains.agents import initialize_world_agent
+                from app.game.npc.agents import initialize_world_agent
 
                 initialize_world_agent()
 
@@ -54,9 +54,7 @@ app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 init_db()
 
-app.include_router(chat.router, prefix="/api/v1")
-app.include_router(inventory.router, prefix="/api/v1")
-app.include_router(quests.router, prefix="/api/v1")
+app.include_router(api_router, prefix="/api/v1")
 
 app.add_middleware(
     CORSMiddleware,

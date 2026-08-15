@@ -93,7 +93,7 @@ Stream may include in-band signals such as `[[MOOD:75]]`, `[[ANIM:WAVE]]`, and `
 
 ### Inventory and quests (server authority)
 
-- Mutations go through `inventory_service.grant_item` and `quest_service` (HTTP routes and Soul tools share these services).
+- Mutations go through `app.game.inventory.service.grant_item` and `app.game.quests.service` (HTTP routes and Soul tools share these services).
 - Soul Agent tools (`get_quest_status`, `mark_quest_ready`, `claim_quest_reward`, `send_gift`) inject `session_id` from graph state and call the same services.
 - `send_gift` persists via `grant_item`, then instructs the model to emit `[[GIFT:item_id]]` only after a successful grant. The in-band tag is a Unity presentation cue, not the source of truth.
 
@@ -101,7 +101,7 @@ Stream may include in-band signals such as `[[MOOD:75]]`, `[[ANIM:WAVE]]`, and `
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/init_rag.py` | Build Chroma index from `app/data/world_settings.txt` |
+| `scripts/init_rag.py` | Build Chroma index from `app/content/world_settings.txt` |
 | `scripts/check_models.py` | List available Google AI models for your key |
 | `generate_docs.py` | Regenerate API snapshot markdown (optional) |
 | `generate_unity_docs.py` | Regenerate Unity C# context markdown (optional) |
@@ -112,7 +112,7 @@ Run scripts from the `nebula-api` directory so `app` imports resolve.
 
 ```powershell
 pip install -r requirements-dev.txt
-ruff check app tests
+ruff check app tests evals
 pytest
 ```
 
@@ -132,8 +132,8 @@ The image includes Python 3.12 and Node.js/npx for the Google Maps MCP subproces
 
 | Path | Created by |
 |------|------------|
-| `app/data/nebula.db` | First API startup (`init_db`) |
-| `app/data/chroma_db/` | `scripts/init_rag.py` |
+| `var/nebula.db` | First API startup (`init_db`) |
+| `var/chroma_db/` | `scripts/init_rag.py` |
 
 ## Unity client
 
@@ -145,11 +145,28 @@ Point the Unity client (`Nebula-Unity-Client`) at `http://127.0.0.1:8000/api/v1/
 nebula-api/
 ├── main.py              # FastAPI entrypoint + MCP lifespan
 ├── app/
-│   ├── api/             # HTTP routes (chat, inventory, quests)
-│   ├── chains/          # LangGraph + agents + tools
-│   ├── core/            # config, database, RAG, prompts
-│   ├── game/            # Quest / item definitions (static defs)
-│   ├── models/          # ORM, Pydantic schemas, graph state
-│   └── services/        # inventory, quest, DB helpers, background AI
-└── scripts/             # One-off setup utilities
+│   ├── agentkit/        # Reusable Agent framework — no gameplay concepts
+│   │   ├── llm/         # Model construction + provider fallback chains
+│   │   ├── guardrails/  # Output validation before text is trusted
+│   │   ├── observability/  # Per-request tracing + log formatting
+│   │   ├── retrieval/   # Chroma-backed RAG
+│   │   └── integrations/   # MCP client session
+│   ├── game/            # Nebula gameplay, one subpackage per domain
+│   │   ├── npc/         # LangGraph wiring, routing, prompts, tools
+│   │   ├── quests/      # Quest state machine + definitions
+│   │   ├── inventory/   # Server-authoritative bag
+│   │   ├── memory/      # Summaries, titles, background compression
+│   │   └── session/     # Chat session + message persistence
+│   ├── api/v1/          # HTTP routes, aggregated into one router
+│   ├── schemas/         # Pydantic request/response models
+│   ├── infra/           # SQLAlchemy engine + ORM tables
+│   ├── config/          # Settings and path constants
+│   ├── shared/          # Small cross-layer helpers
+│   └── content/         # Authored world content (in git)
+├── evals/cases/         # Golden cases, one YAML per suite
+├── scripts/             # One-off setup utilities
+└── var/                 # Runtime artifacts: sqlite + chroma (gitignored)
 ```
+
+Dependency direction is one-way: `api` → `game` → `agentkit` → `infra`/`config`.
+`agentkit` must never import from `app.game`. See `docs/ARCHITECTURE.md`.

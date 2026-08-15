@@ -6,5 +6,4 @@ __pycache__/
 .mypy_cache/
 *.log
 english-notes.md
-app/data/nebula.db
-app/data/chroma_db/
+var/

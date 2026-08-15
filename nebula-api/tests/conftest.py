@@ -16,9 +16,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api import chat, inventory, quests
-from app.core.database import get_db
-from app.models.db_models import Base
+from app.api.v1 import api_router
+from app.infra.database import get_db
+from app.infra.models import Base
 
 
 @pytest.fixture()
@@ -40,9 +40,7 @@ def client() -> TestClient:
             db.close()
 
     app = FastAPI()
-    app.include_router(chat.router, prefix="/api/v1")
-    app.include_router(inventory.router, prefix="/api/v1")
-    app.include_router(quests.router, prefix="/api/v1")
+    app.include_router(api_router, prefix="/api/v1")
     app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as test_client:

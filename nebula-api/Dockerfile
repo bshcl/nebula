@@ -17,7 +17,7 @@ COPY . .
 RUN sed -i 's/\r$//' docker-entrypoint.sh && chmod +x docker-entrypoint.sh
 
 ENV LOG_DIR=/app/logs
-RUN mkdir -p /app/logs app/data
+RUN mkdir -p /app/logs var
 
 EXPOSE 8000
 

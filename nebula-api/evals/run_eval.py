@@ -18,9 +18,9 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
 
-from app.chains.routing import post_analyzer_router
-from app.core.config import settings
-from evals.scoring import load_cases, score_route
+from app.config import settings  # noqa: E402
+from app.game.npc.routing import post_analyzer_router  # noqa: E402
+from evals.scoring import load_cases, score_route  # noqa: E402
 
 
 def run_route_case(case: dict[str, Any]) -> dict[str, Any]:

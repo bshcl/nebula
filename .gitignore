@@ -64,8 +64,7 @@ nebula-api/*.pyc
 nebula-api/*.pyo
 nebula-api/*.log
 nebula-api/english-notes.md
-nebula-api/app/data/nebula.db
-nebula-api/app/data/chroma_db/
+nebula-api/var/
 nebula-api/sessions/*.json
 
 # Local notes and drafts (not for GitHub)
