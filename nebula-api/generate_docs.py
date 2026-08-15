@@ -1,7 +1,17 @@
 import os
 
 # 1. 定义要排除的“噪音”文件夹和文件
-EXCLUDE_DIRS = {".venv", "__pycache__", ".git", "node_modules", "sessions", ".next"}
+EXCLUDE_DIRS = {
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".git",
+    "node_modules",
+    ".next",
+    "var",
+    ".pytest_cache",
+    ".ruff_cache",
+}
 EXCLUDE_FILES = {"nebula.db", "package-lock.json", "generate_docs.py", ".env"}
 
 
