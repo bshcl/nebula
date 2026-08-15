@@ -36,6 +36,8 @@
 *.fbx
 *.mat
 *.prefab
+# UI prefabs are authored source, not imported binary assets.
+!Nebula-Unity-Client/Assets/_Project/Prefabs/**/*.prefab
 *.unity
 !Nebula-Unity-Client/Assets/_Project/Scenes/*.unity
 !Nebula-Unity-Client/Assets/_Project/Scenes/*.unity.meta
