@@ -1,0 +1,42 @@
+# Golden cases for Nebula NPC eval (first slice: routing + reply shape).
+# mode:
+#   - route_only: no LLM; check post_analyzer_router / mood path
+#   - reply_rules: later; check reply text / markers (optional for now)
+
+cases:
+  - id: angry_low_mood
+    description: Mood below angry threshold should route to angry
+    mode: route_only
+    input:
+      mood: 10
+      message: "hello"
+    expect:
+      route: angry
+
+  - id: normal_world_path
+    description: Mood above threshold should route toward world (when SKIP_WORLD_NODE is false)
+    mode: route_only
+    input:
+      mood: 50
+      message: "how's the weather?"
+    expect:
+      route: world
+
+  - id: skip_world_demo
+    description: When SKIP_WORLD_NODE is true, normal mood routes to soul
+    mode: route_only
+    input:
+      mood: 50
+      message: "hi"
+      skip_world_node: true
+    expect:
+      route: soul
+
+  - id: borderline_not_angry
+    description: Mood exactly at threshold is normal path (not angry)
+    mode: route_only
+    input:
+      mood: 20
+      message: "are you ok?"
+    expect:
+      route: world
