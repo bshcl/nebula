@@ -1,7 +1,9 @@
 {
     "name": "Nebula.Editor",
     "rootNamespace": "Nebula.Editor",
-    "references": [],
+    "references": [
+        "Nebula.Runtime"
+    ],
     "includePlatforms": [
         "Editor"
     ],
