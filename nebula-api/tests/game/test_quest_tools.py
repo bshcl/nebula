@@ -5,6 +5,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.agentkit.observability import clear_trace, get_trace, start_trace
+from app.game.inventory.seed import seed_item_masters
 from app.game.npc.tools import QuestTools
 from app.game.quests.defs import DEFAULT_QUEST_ID
 from app.infra.models import Base, ChatSession
@@ -32,6 +34,7 @@ def tool_db(monkeypatch):
             mood=50,
         )
     )
+    seed_item_masters(seed)
     seed.commit()
     seed.close()
 
@@ -85,11 +88,36 @@ def test_claim_via_tool_is_idempotent(tool_db):
     second = QuestTools.claim_quest_reward.invoke(
         {"quest_id": DEFAULT_QUEST_ID, "state": _state()}
     )
-    assert "already claimed" in second.lower()
+    assert "quest_already_claimed" in second
+    assert "[[GIFT:" not in second
 
 
 def test_claim_via_tool_rejects_if_not_ready(tool_db):
     result = QuestTools.claim_quest_reward.invoke(
         {"quest_id": DEFAULT_QUEST_ID, "state": _state()}
     )
-    assert "not ready" in result.lower()
+    assert "quest_not_ready" in result
+    assert "[[GIFT:" not in result
+
+
+def test_claim_rejects_unknown_quest(tool_db):
+    result = QuestTools.claim_quest_reward.invoke(
+        {"quest_id": "quest_does_not_exist", "state": _state()}
+    )
+    assert "unknown_quest" in result
+    assert "[[GIFT:" not in result
+
+
+def test_claim_not_ready_records_trace(tool_db):
+    clear_trace()
+    start_trace(session_id=TEST_SESSION_ID, mood_before=50)
+
+    result = QuestTools.claim_quest_reward.invoke(
+        {"quest_id": DEFAULT_QUEST_ID, "state": _state()}
+    )
+    assert "quest_not_ready" in result
+
+    trace = get_trace()
+    assert trace is not None
+    assert "claim_quest_reward:quest_not_ready" in trace.tool_rejections
+    clear_trace()

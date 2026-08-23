@@ -28,7 +28,16 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """Create database tables if they do not exist."""
+    """Create database tables if they do not exist, then seed catalog rows."""
+    from app.game.inventory.seed import seed_item_masters
     from app.infra.models import Base
 
     Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+    try:
+        added = seed_item_masters(db)
+        if added:
+            logger.info("Seeded %s item_masters row(s)", added)
+    finally:
+        db.close()

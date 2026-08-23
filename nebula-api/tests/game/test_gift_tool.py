@@ -5,7 +5,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.agentkit.observability import clear_trace, get_trace, start_trace
 from app.game.inventory import service as inventory_service
+from app.game.inventory.seed import seed_item_masters
 from app.game.npc.tools import InteractionTools
 from app.infra.models import Base, ChatSession
 
@@ -32,6 +34,7 @@ def tool_db(monkeypatch):
             mood=50,
         )
     )
+    seed_item_masters(seed)
     seed.commit()
     seed.close()
 
@@ -68,3 +71,39 @@ def test_send_gift_requires_session_id() -> None:
     result = InteractionTools.send_gift.invoke({"item_name": "star_candy", "state": {}})
     assert "Missing session_id" in result
     assert "[[GIFT:" not in result
+
+
+def test_send_gift_rejects_unknown_item_and_records_trace(tool_db) -> None:
+    clear_trace()
+    start_trace(session_id=TEST_SESSION_ID, mood_before=50)
+
+    result = InteractionTools.send_gift.invoke(
+        {
+            "item_name": "legendary_blade",
+            "state": {"session_id": TEST_SESSION_ID},
+        }
+    )
+    assert "[[GIFT:" not in result
+    assert "unknown_item" in result
+
+    trace = get_trace()
+    assert trace is not None
+    assert "send_gift:unknown_item" in trace.tool_rejections
+
+    db = tool_db()
+    try:
+        assert inventory_service.list_inventory(db, TEST_SESSION_ID) == []
+    finally:
+        db.close()
+    clear_trace()
+
+
+def test_send_gift_rejects_quest_reward_item(tool_db) -> None:
+    result = InteractionTools.send_gift.invoke(
+        {
+            "item_name": "navigator_emblem",
+            "state": {"session_id": TEST_SESSION_ID},
+        }
+    )
+    assert "[[GIFT:" not in result
+    assert "not_giftable_by_npc" in result

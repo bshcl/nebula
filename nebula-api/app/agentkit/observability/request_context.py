@@ -19,6 +19,7 @@ class RequestTrace:
     route: str | None = None
     nodes: list[str] = field(default_factory=list)
     fallbacks: list[str] = field(default_factory=list)
+    tool_rejections: list[str] = field(default_factory=list)
     started_monotonic: float = field(default_factory=time.monotonic)
 
     def mark_node(self, node_name: str) -> None:
@@ -32,6 +33,14 @@ class RequestTrace:
         if name and name not in self.fallbacks:
             self.fallbacks.append(name)
 
+    def mark_tool_rejection(self, tool_name: str, reason: str) -> None:
+        """Record a deterministic tool pre-check rejection (not a system error)."""
+        if not tool_name or not reason:
+            return
+        entry = f"{tool_name}:{reason}"
+        if entry not in self.tool_rejections:
+            self.tool_rejections.append(entry)
+
     def elapsed_ms(self) -> int:
         return int((time.monotonic() - self.started_monotonic) * 1000)
 
@@ -42,6 +51,9 @@ class RequestTrace:
             "route": self.route or "unknown",
             "nodes": ",".join(self.nodes) if self.nodes else "-",
             "fallbacks": ",".join(self.fallbacks) if self.fallbacks else "none",
+            "tool_rejections": (
+                ",".join(self.tool_rejections) if self.tool_rejections else "none"
+            ),
             "mood_before": self.mood_before,
             "mood_after": self.mood_after,
             "duration_ms": self.elapsed_ms(),

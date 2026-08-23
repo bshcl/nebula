@@ -5,11 +5,14 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedState
 
 from app.agentkit.integrations import mcp_manager
+from app.agentkit.observability import get_trace
 from app.agentkit.retrieval import rag_engine
 from app.config import get_logger, settings
 from app.game.inventory import service as inventory_service
+from app.game.inventory.catalog import get_item_master, npc_gift_reject_reason
 from app.game.quests import service as quest_service
 from app.game.quests.defs import DEFAULT_QUEST_ID
+from app.game.quests.guards import claim_reject_reason
 from app.infra.database import SessionLocal
 
 logger = get_logger(__name__)
@@ -85,6 +88,16 @@ class QuestTools:
 
         db = SessionLocal()
         try:
+            reason = claim_reject_reason(db, session_id, quest_id)
+            if reason:
+                trace = get_trace()
+                if trace is not None:
+                    trace.mark_tool_rejection("claim_quest_reward", reason)
+                return (
+                    f"System message: Claim failed — {reason}. "
+                    "Do not emit a GIFT signal. Tell the player the quest "
+                    "cannot be claimed yet (or was already claimed)."
+                )
             result = quest_service.claim_quest_reward(db, session_id, quest_id)
             item_id = result["grant"]["item_id"]
             return (
@@ -168,6 +181,16 @@ class InteractionTools:
 
         db = SessionLocal()
         try:
+            item = get_item_master(db, cleaned)
+            reason = npc_gift_reject_reason(item)
+            if reason:
+                trace = get_trace()
+                if trace is not None:
+                    trace.mark_tool_rejection("send_gift", reason)
+                return (
+                    f"System message: Gift failed — {reason}. "
+                    "Do not emit a GIFT signal. Apologize in character."
+                )
             result = inventory_service.grant_item(db, session_id, cleaned)
             item_id = result["item_id"]
             return (
