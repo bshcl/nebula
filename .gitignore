@@ -14,6 +14,7 @@
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -36,6 +37,8 @@
 *.fbx
 *.mat
 *.prefab
+# UI prefabs are authored source, not imported binary assets.
+!Nebula-Unity-Client/Assets/_Project/Prefabs/**/*.prefab
 *.unity
 !Nebula-Unity-Client/Assets/_Project/Scenes/*.unity
 !Nebula-Unity-Client/Assets/_Project/Scenes/*.unity.meta
@@ -64,8 +67,7 @@ nebula-api/*.pyc
 nebula-api/*.pyo
 nebula-api/*.log
 nebula-api/english-notes.md
-nebula-api/app/data/nebula.db
-nebula-api/app/data/chroma_db/
+nebula-api/var/
 nebula-api/sessions/*.json
 
 # Local notes and drafts (not for GitHub)

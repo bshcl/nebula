@@ -10,7 +10,7 @@ services:
       # Demo-friendly: skip world node for faster first reply (override in .env)
       # SKIP_WORLD_NODE: "true"
     volumes:
-      - nebula-api-data:/app/app/data
+      - nebula-api-data:/app/var
       - nebula-api-logs:/app/logs
 
 volumes:

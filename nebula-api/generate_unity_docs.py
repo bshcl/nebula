@@ -2,7 +2,7 @@
 
 import os
 
-from app.core.config import settings
+from app.config import settings
 
 # Monorepo: nebula-api/../Nebula-Unity-Client/Assets/_Project/Scripts
 UNITY_SCRIPTS_PATH = os.path.join(

@@ -4,10 +4,10 @@ from langchain_chroma import Chroma
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import CharacterTextSplitter
 
-from app.core.config import settings
-from app.core.rag_engine import DB_PATH, rag_engine
+from app.agentkit.retrieval import DB_PATH, rag_engine
+from app.config import settings
 
-SOURCE_PATH = f"{settings.ROOT_DIR}/app/data/world_settings.txt"
+SOURCE_PATH = f"{settings.CONTENT_DIR}/world_settings.txt"
 
 
 def build_knowledge_base() -> None:

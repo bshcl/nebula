@@ -2,7 +2,7 @@
 set -e
 
 # Build Chroma index on first run when no persisted DB exists.
-if [ ! -d "app/data/chroma_db" ] || [ -z "$(ls -A app/data/chroma_db 2>/dev/null)" ]; then
+if [ ! -d "var/chroma_db" ] || [ -z "$(ls -A var/chroma_db 2>/dev/null)" ]; then
   echo "[entrypoint] Initializing RAG knowledge base..."
   python scripts/init_rag.py
 fi

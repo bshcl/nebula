@@ -33,7 +33,7 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Ruff lint
-        run: ruff check app tests
+        run: ruff check app tests evals
 
       - name: Pytest
         env:
