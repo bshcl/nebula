@@ -1,0 +1,29 @@
+# Reject cases: deterministic tool pre-checks (no LLM)
+cases:
+  - id: reject_unknown_gift
+    description: Unknown gift item must be rejected
+    mode: tool_reject
+    input:
+      tool: send_gift
+      item_name: legendary_blade
+    expect:
+      reason: unknown_item
+
+  - id: reject_claim_not_ready
+    description: Claim before ready must be rejected
+    mode: tool_reject
+    input:
+      tool: claim_quest_reward
+      quest_id: quest_first_hello
+    expect:
+      reason: quest_not_ready
+
+  # Same harness shape as tool_reject; different mode because we call
+  # sanitize_npc_reply (output guard) instead of catalog/quest guards.
+  - id: reject_illegal_anim
+    description: Illegal ANIM tag must be stripped by output guardrails
+    mode: output_reject
+    input:
+      reply: "Hi [[ANIM:DANCE]] there"
+    expect:
+      reason: removed_anim:DANCE

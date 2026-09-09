@@ -1,0 +1,11 @@
+# Fallback cases: mock cloud failure; do not call real Gemini/Groq/Ollama
+cases:
+  - id: soul_falls_back_to_local
+    description: Cloud soul failure should fall back to local path and be traced
+    mode: fallback_soul
+    input:
+      simulate: cloud_soul_failure
+    expect:
+      has_messages: true
+      fallback: soul_local_ollama
+      reply_contains: "[[SYSTEM:OFFLINE]]"
