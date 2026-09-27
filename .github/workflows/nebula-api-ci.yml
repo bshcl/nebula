@@ -42,3 +42,13 @@ jobs:
           GOOGLE_MAPS_API_KEY: test-maps-key
           LOG_DIR: /tmp/nebula-logs
         run: pytest -q
+
+      # Same dummy keys as pytest: importing settings requires them, but
+      # run_eval.py only exercises deterministic cases (no live model calls).
+      - name: Eval harness
+        env:
+          GOOGLE_API_KEY: test-google-key
+          GROQ_API_KEY: test-groq-key
+          GOOGLE_MAPS_API_KEY: test-maps-key
+          LOG_DIR: /tmp/nebula-logs
+        run: python evals/run_eval.py

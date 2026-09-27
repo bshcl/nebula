@@ -114,9 +114,12 @@ Run scripts from the `nebula-api` directory so `app` imports resolve.
 pip install -r requirements-dev.txt
 ruff check app tests evals
 pytest
+python evals/run_eval.py
 ```
 
-CI runs the same checks on pull requests that touch `nebula-api/**` (see `.github/workflows/nebula-api-ci.yml`).
+`python evals/run_eval.py` runs the golden cases under `evals/cases/`. Those cases check deterministic behavior (routing and, as suites land, rejections and fallbacks). They do not call Gemini, Groq, or Ollama.
+
+CI runs the same checks on pull requests that touch `nebula-api/**` (see `.github/workflows/nebula-api-ci.yml`). The eval step uses placeholder API keys only so settings can import; it does not send them to a provider.
 
 ## Docker
 
