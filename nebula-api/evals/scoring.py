@@ -62,5 +62,20 @@ def score_route(*, expected: str, actual: str) -> dict[str, Any]:
     }
 
 
+def score_reason(*, expected: str, actual: str | None) -> dict[str, Any]:
+    """Compare expected reject/violation reason to actual (same shape as score_route)."""
+    passed = actual == expected
+    return {
+        "passed": passed,
+        "expected": expected,
+        "actual": actual,
+        "reason": (
+            "ok"
+            if passed
+            else f"reason mismatch: expected={expected} actual={actual}"
+        ),
+    }
+
+
 # Back-compat alias used while learning the harness
 score_cases = score_route

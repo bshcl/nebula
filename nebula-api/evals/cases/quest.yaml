@@ -1,0 +1,33 @@
+# Quest service flow cases (no LLM)
+cases:
+  - id: quest_claim_when_ready
+    description: Ready quest claim succeeds and grants reward
+    mode: quest_flow
+    input:
+      setup: ready
+      quest_id: quest_first_hello
+    expect:
+      outcome: success
+      status: claimed
+      inventory_has: navigator_emblem
+
+  - id: quest_claim_when_not_ready
+    description: Not-ready claim fails and grants nothing
+    mode: quest_flow
+    input:
+      setup: not_ready
+      quest_id: quest_first_hello
+    expect:
+      outcome: error
+      inventory_empty: true
+
+  - id: quest_claim_when_already_claimed
+    description: Second claim fails and does not double the reward
+    mode: quest_flow
+    input:
+      setup: already_claimed
+      quest_id: quest_first_hello
+    expect:
+      outcome: error
+      status: claimed
+      inventory_qty: 1
