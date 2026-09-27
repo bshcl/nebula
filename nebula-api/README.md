@@ -133,7 +133,7 @@ From the monorepo root (requires `nebula-api/.env` with API keys):
 docker compose up --build
 ```
 
-The image includes Python 3.12 and Node.js/npx for the Google Maps MCP subprocess. Data persists in Docker volumes (`nebula-api-data`, `nebula-api-logs`).
+The image includes Python 3.12 and Node.js/npx for the Google Maps MCP subprocess. Compose mounts `nebula-api-data` at `/app/var` (SQLite `nebula.db` and Chroma; this is `Settings.VAR_DIR`) and `nebula-api-logs` at `/app/logs`.
 
 ## Data files (local only, not in git)
 
@@ -177,3 +177,10 @@ nebula-api/
 
 Dependency direction is one-way: `api` → `game` → `agentkit` → `infra`/`config`.
 `agentkit` must never import from `app.game`. See `docs/ARCHITECTURE.md`.
+
+## Not in this phase
+
+- Combat
+- A demo video
+- A streaming filter for in-band tags. `/completions` yields tokens before `sanitize_npc_reply`. The saved message is clean; a live client can still show a bad tag for that turn. Tags do not grant items.
+- Prose scoring. The eval harness does not call a model provider.
