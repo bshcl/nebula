@@ -98,7 +98,7 @@ async def graph_streamer(
         guarded = sanitize_npc_reply(full_response)
         if guarded.changed:
             for name in guarded.violations:
-                trace.mark_fallback(f"guardrail:{name}")
+                trace.mark_guardrail_violation(name)
             logger.info(
                 "guardrail_sanitized session=%s violations=%s",
                 payload.session_id,

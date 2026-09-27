@@ -121,6 +121,10 @@ python evals/run_eval.py
 
 CI runs the same checks on pull requests that touch `nebula-api/**` (see `.github/workflows/nebula-api-ci.yml`). The eval step uses placeholder API keys only so settings can import; it does not send them to a provider.
 
+## Logs
+
+Application logs use `rid=<request_id> sid=<session_id>`. After a chat turn, grep `chat_turn_complete` for that `rid`. The summary lists `route`, `tool_rejections`, `fallbacks`, and `guardrail_violation_count`. See `docs/ARCHITECTURE.md`.
+
 ## Docker
 
 From the monorepo root (requires `nebula-api/.env` with API keys):

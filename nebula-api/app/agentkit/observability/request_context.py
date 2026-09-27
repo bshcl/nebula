@@ -20,6 +20,7 @@ class RequestTrace:
     nodes: list[str] = field(default_factory=list)
     fallbacks: list[str] = field(default_factory=list)
     tool_rejections: list[str] = field(default_factory=list)
+    guardrail_violations: list[str] = field(default_factory=list)
     started_monotonic: float = field(default_factory=time.monotonic)
 
     def mark_node(self, node_name: str) -> None:
@@ -30,8 +31,14 @@ class RequestTrace:
         self.route = route
 
     def mark_fallback(self, name: str) -> None:
+        """Record a provider or node fallback. Not for output-guardrail hits."""
         if name and name not in self.fallbacks:
             self.fallbacks.append(name)
+
+    def mark_guardrail_violation(self, name: str) -> None:
+        """Record one output-guardrail violation, separate from fallbacks."""
+        if name and name not in self.guardrail_violations:
+            self.guardrail_violations.append(name)
 
     def mark_tool_rejection(self, tool_name: str, reason: str) -> None:
         """Record a deterministic tool pre-check rejection (not a system error)."""
@@ -54,6 +61,10 @@ class RequestTrace:
             "tool_rejections": (
                 ",".join(self.tool_rejections) if self.tool_rejections else "none"
             ),
+            "guardrail_violations": (
+                ",".join(self.guardrail_violations) if self.guardrail_violations else "none"
+            ),
+            "guardrail_violation_count": len(self.guardrail_violations),
             "mood_before": self.mood_before,
             "mood_after": self.mood_after,
             "duration_ms": self.elapsed_ms(),

@@ -39,6 +39,22 @@ composition root doing its job, not a layer violation.
 | Authored content (lore, dialogue text) | `app/content/` | Committed to git |
 | Anything generated at runtime | `var/` | Gitignored; never commit |
 
+## When a chat turn looks wrong
+
+Every log line is prefixed `rid=<request_id> sid=<session_id>`. Grep one `rid=` to see that turn.
+
+At the end of `/completions`, one line starts with `chat_turn_complete`. Its fields answer:
+
+| Field | Question |
+|---|---|
+| `route` | Which path ran (`angry`, `world`, or `soul`) |
+| `tool_rejections` | Did a tool pre-check refuse a call, or `none` |
+| `fallbacks` | Did a model or node fall back, or `none` |
+| `guardrail_violation_count` | How many output-guardrail hits (names in `guardrail_violations`) |
+| `duration_ms` | How long the turn took |
+
+Guardrail hits are not fallbacks. A stripped `[[ANIM:]]` tag does not mean the cloud model failed.
+
 ## Tests and evals mirror the source tree
 
 `tests/agentkit/`, `tests/game/`, `tests/api/`, `tests/shared/`, `tests/evals/`.

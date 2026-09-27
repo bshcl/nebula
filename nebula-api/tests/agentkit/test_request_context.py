@@ -30,6 +30,8 @@ def test_mark_helpers_and_summary() -> None:
     trace.mark_fallback("soul_local_ollama")
     trace.mark_tool_rejection("send_gift", "unknown_item")
     trace.mark_tool_rejection("send_gift", "unknown_item")  # duplicate ignored
+    trace.mark_guardrail_violation("removed_anim:DANCE")
+    trace.mark_guardrail_violation("removed_anim:DANCE")  # duplicate ignored
     trace.mood_after = 45
 
     fields = trace.summary_fields()
@@ -37,6 +39,8 @@ def test_mark_helpers_and_summary() -> None:
     assert fields["nodes"] == "analyzer,soul_node"
     assert fields["fallbacks"] == "soul_local_ollama"
     assert fields["tool_rejections"] == "send_gift:unknown_item"
+    assert fields["guardrail_violations"] == "removed_anim:DANCE"
+    assert fields["guardrail_violation_count"] == 1
     assert fields["mood_before"] == 40
     assert fields["mood_after"] == 45
     assert isinstance(fields["duration_ms"], int)
@@ -51,4 +55,6 @@ def test_mark_tool_rejection_requires_both_parts() -> None:
     trace.mark_tool_rejection("", "unknown_item")
     trace.mark_tool_rejection("send_gift", "")
     assert trace.summary_fields()["tool_rejections"] == "none"
+    assert trace.summary_fields()["guardrail_violation_count"] == 0
+    assert trace.summary_fields()["fallbacks"] == "none"
     clear_trace()
