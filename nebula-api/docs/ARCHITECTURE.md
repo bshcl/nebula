@@ -26,6 +26,28 @@ The one deliberate exception is `app/config/__init__.py` importing
 `agentkit.observability.logging` to wire logging at startup — that is the
 composition root doing its job, not a layer violation.
 
+## Runtime boundary
+
+Unity renders and sends intent. It does not write the ledger.
+
+```mermaid
+flowchart LR
+  Unity[Unity renders and sends intent]
+  API[FastAPI]
+  LLM[LLM chooses a tool]
+  Svc[quest_service and inventory_service]
+  DB[(SQLite)]
+  Unity -->|HTTP| API
+  API --> LLM
+  LLM -->|tool call only| Svc
+  Svc -->|only writers| DB
+  API -->|text and read models| Unity
+```
+
+A talk turn can ask the soul agent to mark a quest ready or claim a reward. The tool runs Python that checks the item catalog and quest status, then writes quest status and the reward in one transaction. The bag is a read of that table. Naming an item in the reply does not insert a row. Unknown, inactive, or non-grantable ids are rejected before any write. `[[GIFT:]]` is a client cue after a successful grant.
+
+**Known follow-up:** `/completions` yields tokens before `sanitize_npc_reply`. A live bubble can show an illegal or partial tag. The message saved to SQLite is sanitized. Inventory and quest rows are unchanged by tags.
+
 ## Where new things go
 
 | You are adding | Server location | Notes |
