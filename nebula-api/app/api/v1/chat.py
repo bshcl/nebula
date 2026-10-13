@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from sqlalchemy.orm import Session
 
-from app.agentkit.guardrails import sanitize_npc_reply
+from app.agentkit.guardrails import sanitize_npc_reply, screen_user_input
 from app.agentkit.observability import clear_trace, start_trace
 from app.config import get_logger
 from app.game.memory import tasks as memory_tasks
@@ -24,6 +24,12 @@ from app.shared.utils import ensure_string
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+# Player-visible replies when the input never enters the graph. No character name.
+INPUT_REJECTION_REPLIES = {
+    "empty": "Say something.",
+    "prompt_injection": "I can't follow that.",
+}
 
 # Default world-state placeholders until MCP / tools populate real values
 DEFAULT_LOCATION = "Tokyo, Japan"
@@ -129,6 +135,24 @@ async def chat_completions(
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> StreamingResponse:
     """Main chat endpoint ―― accepts a user message and streams the NPC reply."""
+    screened = screen_user_input(payload.message)
+    if screened.rejected:
+        logger.info(
+            "input_rejected session=%s reason=%s",
+            payload.session_id,
+            screened.reason,
+        )
+        reply = INPUT_REJECTION_REPLIES[screened.reason or "empty"]
+        return StreamingResponse(iter([reply]), media_type="text/event-stream")
+
+    if screened.reason == "truncated":
+        logger.info(
+            "input_truncated session=%s kept_chars=%s",
+            payload.session_id,
+            len(screened.text),
+        )
+        payload = payload.model_copy(update={"message": screened.text})
+
     session_service.save_message(db, payload.session_id, "user", payload.message)
     return StreamingResponse(
         graph_streamer(payload, db, background_tasks),
