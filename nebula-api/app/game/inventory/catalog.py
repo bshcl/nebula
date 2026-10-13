@@ -8,6 +8,12 @@ from app.infra.models import ItemMaster
 from app.shared.item_types import GrantSource
 
 
+def list_item_ids(db: Session) -> set[str]:
+    """Return every catalog item id. Used to reject invented gift tags."""
+    rows = db.query(ItemMaster.item_id).all()
+    return {str(row[0]) for row in rows}
+
+
 def get_item_master(db: Session, item_id: str) -> ItemMaster | None:
     """Return the catalog row for item_id, or None if it does not exist."""
     cleaned = (item_id or "").strip()

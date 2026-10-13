@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Collection
 from dataclasses import dataclass, field
 
 ALLOWED_ANIM_ACTIONS = frozenset({"WAVE", "ANGRY", "THINK"})
@@ -14,6 +15,15 @@ _TOOL_XML_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _GIFT_ID_RE = re.compile(r"^[a-z0-9_]+$", re.IGNORECASE)
+# A count tied to a bag word. Ordinary numbers ("waiting 3 days") do not match.
+_INVENTORY_CLAIM_RE = re.compile(
+    r"(?:"
+    r"\byou have\s+\d+\b[^.!?\n]{0,60}\b(?:bag|inventory|backpack)\b"
+    r"|"
+    r"\b(?:bag|inventory|backpack)\b[^.!?\n]{0,40}\bhas\s+\d+\b"
+    r")",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -26,11 +36,21 @@ class GuardrailResult:
         return bool(self.violations)
 
 
-def sanitize_npc_reply(text: str) -> GuardrailResult:
-    """Clean one assistant reply before it is persisted / trusted."""
+def sanitize_npc_reply(
+    text: str,
+    *,
+    allowed_gift_ids: Collection[str] | None = None,
+) -> GuardrailResult:
+    """Clean one assistant reply before it is persisted / trusted.
+
+    ``allowed_gift_ids`` is the catalog. When it is set, a well-formed
+    ``[[GIFT:]]`` whose id is missing from that set is removed. When it is
+    omitted, only the id shape is checked.
+    """
     if not text:
         return GuardrailResult(text="")
 
+    allowed = set(allowed_gift_ids) if allowed_gift_ids is not None else None
     violations: list[str] = []
     cleaned = text
 
@@ -52,10 +72,13 @@ def sanitize_npc_reply(text: str) -> GuardrailResult:
 
         if kind == "GIFT":
             item_id = value.strip()
-            if _GIFT_ID_RE.fullmatch(item_id):
-                return f"[[GIFT:{item_id}]]"
-            violations.append(f"removed_gift:{item_id}")
-            return ""
+            if not _GIFT_ID_RE.fullmatch(item_id):
+                violations.append(f"removed_gift:{item_id}")
+                return ""
+            if allowed is not None and item_id not in allowed:
+                violations.append(f"removed_unknown_gift:{item_id}")
+                return ""
+            return f"[[GIFT:{item_id}]]"
 
         if kind == "MOOD":
             # Server owns mood sync; model must not emit it.
@@ -73,6 +96,12 @@ def sanitize_npc_reply(text: str) -> GuardrailResult:
         return ""
 
     cleaned = _TAG_RE.sub(_replace_tag, cleaned)
+
+    without_claims, claim_count = _INVENTORY_CLAIM_RE.subn("", cleaned)
+    if claim_count:
+        violations.append("removed_inventory_claim")
+        cleaned = without_claims
+
     cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 

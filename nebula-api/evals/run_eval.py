@@ -31,6 +31,7 @@ from app.agentkit.observability import clear_trace, get_trace, start_trace  # no
 from app.config import settings  # noqa: E402
 from app.game.inventory.catalog import (  # noqa: E402
     get_item_master,
+    list_item_ids,
     npc_gift_reject_reason,
 )
 from app.game.inventory.seed import seed_item_masters  # noqa: E402
@@ -364,9 +365,9 @@ def run_output_reject_case(case: dict[str, Any]) -> dict[str, Any]:
     """Deterministic output-guard eval — same shell as tool_reject, different middle.
 
     IN:    case["input"].reply; case["expect"].reason  (a violation id)
-    STEPS: 1) sanitize_npc_reply  2) pick matching violation  3) score
+    STEPS: 1) sanitize_npc_reply against the seeded catalog  2) pick matching violation  3) score
     OUT:   {id, description, passed, expected, actual, reason}
-    DON'T: touch DB; call LLM; assert on full reply prose quality
+    DON'T: touch var/nebula.db; call LLM; assert on full reply prose quality
     """
     case_id = case.get("id", "<unknown>")
     case_input = case.get("input") or {}
@@ -376,7 +377,14 @@ def run_output_reject_case(case: dict[str, Any]) -> dict[str, Any]:
     if "reply" not in case_input:
         raise ValueError(f"case {case_id} missing input.reply")
 
-    result = sanitize_npc_reply(str(case_input["reply"]))
+    db = _make_eval_db()
+    try:
+        result = sanitize_npc_reply(
+            str(case_input["reply"]),
+            allowed_gift_ids=list_item_ids(db),
+        )
+    finally:
+        db.close()
     # Prefer exact violation match; if missing, surface first violation (or None).
     if expected in result.violations:
         actual: str | None = expected

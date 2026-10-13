@@ -35,3 +35,29 @@ def test_strips_tool_xml() -> None:
     assert "<tool_call>" not in result.text
     assert "hello" in result.text and "world" in result.text
     assert "stripped_tool_xml" in result.violations
+
+
+def test_strips_gift_id_missing_from_catalog() -> None:
+    raw = "[[GIFT:star_candy]] take [[GIFT:legendary_blade]]"
+    result = sanitize_npc_reply(
+        raw,
+        allowed_gift_ids={"star_candy", "navigator_emblem"},
+    )
+    assert "[[GIFT:star_candy]]" in result.text
+    assert "legendary_blade" not in result.text
+    assert "removed_unknown_gift:legendary_blade" in result.violations
+
+
+def test_strips_inventory_count_claim() -> None:
+    raw = "Hmph. You have 3 star_candy in your bag. Come in."
+    result = sanitize_npc_reply(raw)
+    assert "3" not in result.text
+    assert "Come in." in result.text
+    assert "removed_inventory_claim" in result.violations
+
+
+def test_plain_number_is_not_an_inventory_claim() -> None:
+    raw = "I have been waiting 3 days."
+    result = sanitize_npc_reply(raw)
+    assert result.violations == []
+    assert result.text == raw
