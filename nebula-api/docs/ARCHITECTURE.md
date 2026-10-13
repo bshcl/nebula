@@ -77,6 +77,16 @@ At the end of `/completions`, one line starts with `chat_turn_complete`. Its fie
 
 Guardrail hits are not fallbacks. A stripped `[[ANIM:]]` tag does not mean the cloud model failed.
 
+## Model time budget
+
+There is no wall-clock timeout on a model call. A cutoff would drop a slow reply that was about to succeed. The budget is retries, then the next provider:
+
+- Google, the primary: `max_retries=2` for a transient failure, then the runnable moves to Groq.
+- Groq: `max_retries=1`.
+- If the soul cloud agent still raises, the node calls local Ollama and marks `soul_local_ollama`.
+
+Each attempt is a row in `var/llm_calls.db` (provider, model, latency, token counts when the provider returns them, and whether that hop is a fallback). `calls_for_request(request_id)` lists one turn oldest-first, so Google then Groq then Ollama stays in order. `recent_llm_calls(n)` is the last n attempts. `daily_llm_summary()` groups by UTC day and provider. Prices are not computed here.
+
 ## Tests and evals mirror the source tree
 
 `tests/agentkit/`, `tests/game/`, `tests/api/`, `tests/shared/`, `tests/evals/`.

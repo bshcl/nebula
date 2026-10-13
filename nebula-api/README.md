@@ -133,7 +133,7 @@ CI runs the same checks on pull requests that touch `nebula-api/**` (see `.githu
 
 ## Logs
 
-Application logs use `rid=<request_id> sid=<session_id>`. After a chat turn, grep `chat_turn_complete` for that `rid`. The summary lists `route`, `tool_rejections`, `fallbacks`, and `guardrail_violation_count`. See `docs/ARCHITECTURE.md`.
+Application logs use `rid=<request_id> sid=<session_id>`. After a chat turn, grep `chat_turn_complete` for that `rid`. The summary lists `route`, `tool_rejections`, `fallbacks`, and `guardrail_violation_count`. Model attempts for that same `request_id` are in `var/llm_calls.db`. See `docs/ARCHITECTURE.md` for the retry budget and why there is no wall-clock timeout.
 
 ## Docker
 
