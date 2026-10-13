@@ -83,7 +83,7 @@ There is no wall-clock timeout on a model call. A cutoff would drop a slow reply
 
 - Google, the primary: `max_retries=2` for a transient failure, then the runnable moves to Groq.
 - Groq: `max_retries=1`.
-- If the soul cloud agent still raises, the node calls local Ollama and marks `soul_local_ollama`.
+- If the soul cloud agent still raises, the node calls local Ollama and marks `soul_local_ollama`. The saved reply and the live stream then include `[[SYSTEM:OFFLINE]]` once. Unity already treats that tag as the offline state. A model-written copy of the tag is removed on any other turn, so a normal cloud reply cannot turn the client gray. Groq catching a Gemini failure is a row in `llm_calls` (`fallback=true`); it does not emit the offline tag, because that reply is still from a cloud model.
 
 Each attempt is a row in `var/llm_calls.db` (provider, model, latency, token counts when the provider returns them, and whether that hop is a fallback). `calls_for_request(request_id)` lists one turn oldest-first, so Google then Groq then Ollama stays in order. `recent_llm_calls(n)` is the last n attempts. `daily_llm_summary()` groups by UTC day and provider. Prices are not computed here.
 

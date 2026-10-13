@@ -7,6 +7,7 @@ from collections.abc import Collection
 from dataclasses import dataclass, field
 
 ALLOWED_ANIM_ACTIONS = frozenset({"WAVE", "ANGRY", "THINK"})
+OFFLINE_TAG = "[[SYSTEM:OFFLINE]]"
 
 # [[ANIM:WAVE]] / [[GIFT:navigator_emblem]] / [[MOOD:72]] / [[SYSTEM:OFFLINE]]
 _TAG_RE = re.compile(r"\[\[([A-Z]+):([^\]]+)\]\]")
@@ -36,16 +37,54 @@ class GuardrailResult:
         return bool(self.violations)
 
 
+class OfflineTagFilter:
+    """Drop ``[[SYSTEM:OFFLINE]]`` from a token stream, including a tag split across chunks.
+
+    The server emits that marker once, after it knows the soul node really used local Ollama.
+    A model must not be able to turn the client gray by writing the tag itself.
+    """
+
+    def __init__(self) -> None:
+        self._pending = ""
+
+    def feed(self, token: str) -> str:
+        self._pending += token
+        self._pending = self._pending.replace(OFFLINE_TAG, "")
+        emit, self._pending = _split_offline_prefix(self._pending)
+        return emit
+
+    def finish(self) -> str:
+        pending = self._pending
+        self._pending = ""
+        if pending.startswith("[[") and OFFLINE_TAG.startswith(pending):
+            return ""
+        return pending
+
+
+def _split_offline_prefix(text: str) -> tuple[str, str]:
+    """Keep a trailing prefix of the offline tag so the next chunk can complete it."""
+    max_len = min(len(text), len(OFFLINE_TAG) - 1)
+    for size in range(max_len, 0, -1):
+        if OFFLINE_TAG.startswith(text[-size:]):
+            return text[:-size], text[-size:]
+    return text, ""
+
+
 def sanitize_npc_reply(
     text: str,
     *,
     allowed_gift_ids: Collection[str] | None = None,
+    allow_offline: bool = False,
 ) -> GuardrailResult:
     """Clean one assistant reply before it is persisted / trusted.
 
     ``allowed_gift_ids`` is the catalog. When it is set, a well-formed
     ``[[GIFT:]]`` whose id is missing from that set is removed. When it is
     omitted, only the id shape is checked.
+
+    ``allow_offline`` is true only when this turn's soul node used local Ollama.
+    The offline marker is then appended once. A model-written copy is removed
+    on every other turn.
     """
     if not text:
         return GuardrailResult(text="")
@@ -86,9 +125,11 @@ def sanitize_npc_reply(
             return ""
 
         if kind == "SYSTEM":
-            # Keep known system markers (e.g. OFFLINE); drop unknowns.
+            # The server appends OFFLINE after a real local fallback. Drop it here.
             if value.upper() == "OFFLINE":
-                return "[[SYSTEM:OFFLINE]]"
+                if not allow_offline:
+                    violations.append("removed_offline_tag")
+                return ""
             violations.append(f"removed_system:{value}")
             return ""
 
@@ -104,6 +145,8 @@ def sanitize_npc_reply(
 
     cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    if allow_offline:
+        cleaned = f"{cleaned} {OFFLINE_TAG}".strip() if cleaned else OFFLINE_TAG
 
     # De-dupe while preserving order
     unique: list[str] = []

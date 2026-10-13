@@ -9,3 +9,14 @@ cases:
       has_messages: true
       fallback: soul_local_ollama
       reply_contains: "[[SYSTEM:OFFLINE]]"
+
+  - id: cloud_reply_cannot_invent_offline
+    description: A normal cloud reply must not keep a model-written offline marker
+    mode: fallback_soul
+    input:
+      simulate: cloud_soul_success
+      reply: "Hello. [[SYSTEM:OFFLINE]]"
+    expect:
+      has_messages: true
+      no_fallback: soul_local_ollama
+      reply_excludes: "[[SYSTEM:OFFLINE]]"

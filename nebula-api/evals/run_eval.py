@@ -263,11 +263,11 @@ def run_quest_flow_case(case: dict[str, Any]) -> dict[str, Any]:
 def run_fallback_soul_case(case: dict[str, Any]) -> dict[str, Any]:
     """Soul cloud-failure fallback eval (mocked; no live providers).
 
-    IN:    input.simulate; expect.has_messages / fallback / reply_contains
+    IN:    input.simulate (cloud_soul_failure | cloud_soul_success); expect
     STEPS: 1) start_trace
-           2) mock soul_agent.ainvoke → raise; mock local_llm.ainvoke → fake reply
+           2) mock soul_agent.ainvoke; on failure, mock local_llm.ainvoke
            3) run call_soul_agent(minimal state)
-           4) read messages + trace.fallbacks
+           4) sanitize the reply with allow_offline only if soul_local_ollama was marked
            5) score vs expect
     OUT:   {id, description, passed, expected, actual, reason}
     DON'T: call real Gemini/Groq/Ollama; raise in the harness instead of mocking
@@ -282,7 +282,7 @@ def run_fallback_soul_case(case: dict[str, Any]) -> dict[str, Any]:
 
     if simulate is None:
         raise ValueError(f"case {case_id} missing input.simulate")
-    if simulate != "cloud_soul_failure":
+    if simulate not in ("cloud_soul_failure", "cloud_soul_success"):
         raise ValueError(f"case {case_id} unsupported simulate={simulate!r}")
     if "has_messages" not in expect:
         raise ValueError(f"case {case_id} missing expect.has_messages")
@@ -305,10 +305,17 @@ def run_fallback_soul_case(case: dict[str, Any]) -> dict[str, Any]:
     # rejects setattr on "ainvoke". Failures must still come from soul_agent so
     # call_soul_agent's except-branch runs.
     fake_local = AIMessage(content="Offline stub reply")
-    mock_soul = AsyncMock()
-    mock_soul.ainvoke = AsyncMock(
-        side_effect=RuntimeError("simulated cloud soul failure")
-    )
+    if simulate == "cloud_soul_failure":
+        mock_soul = AsyncMock()
+        mock_soul.ainvoke = AsyncMock(
+            side_effect=RuntimeError("simulated cloud soul failure")
+        )
+    else:
+        cloud_reply = str(case_input.get("reply") or "Hello")
+        mock_soul = AsyncMock()
+        mock_soul.ainvoke = AsyncMock(
+            return_value={"messages": [AIMessage(content=cloud_reply)]}
+        )
     mock_local = AsyncMock()
     mock_local.ainvoke = AsyncMock(return_value=fake_local)
 
@@ -327,6 +334,9 @@ def run_fallback_soul_case(case: dict[str, Any]) -> dict[str, Any]:
     fallbacks = list(trace.fallbacks) if trace is not None else []
     clear_trace()
 
+    offline = "soul_local_ollama" in fallbacks
+    visible = sanitize_npc_reply(reply_text, allow_offline=offline).text
+
     mismatches: list[str] = []
     has_messages = bool(messages)
     if has_messages != bool(expect["has_messages"]):
@@ -339,16 +349,25 @@ def run_fallback_soul_case(case: dict[str, Any]) -> dict[str, Any]:
             f"fallback expected={expect['fallback']!r} actual={fallbacks!r}"
         )
 
-    if "reply_contains" in expect and expect["reply_contains"] not in reply_text:
+    absent = expect.get("no_fallback")
+    if absent and absent in fallbacks:
+        mismatches.append(f"no_fallback expected absent={absent!r} actual={fallbacks!r}")
+
+    if "reply_contains" in expect and expect["reply_contains"] not in visible:
         mismatches.append(
-            f"reply_contains expected={expect['reply_contains']!r} actual={reply_text!r}"
+            f"reply_contains expected={expect['reply_contains']!r} actual={visible!r}"
+        )
+
+    if "reply_excludes" in expect and expect["reply_excludes"] in visible:
+        mismatches.append(
+            f"reply_excludes expected absent={expect['reply_excludes']!r} actual={visible!r}"
         )
 
     passed = not mismatches
     actual_summary = {
         "has_messages": has_messages,
         "fallbacks": fallbacks,
-        "reply": reply_text,
+        "reply": visible,
     }
     return _result_shell(
         case,
