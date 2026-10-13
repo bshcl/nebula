@@ -117,7 +117,17 @@ pytest
 python evals/run_eval.py
 ```
 
-`python evals/run_eval.py` runs the golden cases under `evals/cases/`. Those cases check deterministic behavior (routing and, as suites land, rejections and fallbacks). They do not call Gemini, Groq, or Ollama.
+`python evals/run_eval.py` runs the golden cases under `evals/cases/`. Those cases check deterministic behavior (routing, rejections, quest outcomes, and fallback). They do not call Gemini, Groq, or Ollama, and they do not score reply prose.
+
+To see whether a prompt or routing change got better or worse, save one run and diff the next:
+
+```powershell
+python evals/run_eval.py --out var/eval-before.json
+# edit the prompt or the route threshold, then:
+python evals/run_eval.py --out var/eval-after.json --diff var/eval-before.json
+```
+
+The console lists a pass rate per suite (`route_only`, `tool_reject`, `quest_flow`, and the rest). The JSON file is the same result in a stable shape. `pass_to_fail` names cases that passed before and fail now: that change made the suite worse. `fail_to_pass` names cases that were fixed. Empty lists mean no golden case moved. `var/` is gitignored.
 
 CI runs the same checks on pull requests that touch `nebula-api/**` (see `.github/workflows/nebula-api-ci.yml`). The eval step uses placeholder API keys only so settings can import; it does not send them to a provider.
 

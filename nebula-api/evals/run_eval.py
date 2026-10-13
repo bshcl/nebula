@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import logging
 import sys
@@ -43,6 +44,14 @@ from app.game.quests.service import (  # noqa: E402
     mark_quest_ready,
 )
 from app.infra.models import Base, ChatSession  # noqa: E402
+from evals.report import (  # noqa: E402
+    build_report,
+    diff_reports,
+    format_diff,
+    format_summary,
+    load_report,
+    write_report,
+)
 from evals.scoring import load_cases, score_reason, score_route  # noqa: E402
 
 # Runner-owned temp session for claim cases (YAML stays rule-only).
@@ -379,7 +388,16 @@ def run_output_reject_case(case: dict[str, Any]) -> dict[str, Any]:
     return _result_shell(case, score_reason(expected=expected, actual=actual))
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run deterministic golden eval cases.")
+    parser.add_argument("--out", type=Path, help="Write a JSON report to this path.")
+    parser.add_argument(
+        "--diff",
+        type=Path,
+        help="Compare this run to a previous JSON report.",
+    )
+    args = parser.parse_args(argv)
+
     cases = load_cases()
     results: list[dict[str, Any]] = []
 
@@ -401,13 +419,26 @@ def main() -> int:
             print(f"SKIP  {case.get('id')} (unsupported mode={mode})")
             continue
 
+        result["mode"] = mode
         results.append(result)
         status = "PASS" if result["passed"] else "FAIL"
         print(f"{status}  {result['id']}: {result['reason']}")
 
-    passed = sum(1 for r in results if r["passed"])
-    total = len(results)
-    print(f"\nSummary: {passed}/{total} passed")
+    report = build_report(results)
+    print(f"\n{format_summary(report)}")
+
+    if args.out is not None:
+        write_report(args.out, report)
+        print(f"Wrote {args.out}")
+
+    if args.diff is not None:
+        if not args.diff.is_file():
+            print(f"Missing diff baseline: {args.diff}", file=sys.stderr)
+            return 1
+        print(format_diff(diff_reports(load_report(args.diff), report)))
+
+    passed = int(report["passed"])
+    total = int(report["total"])
     return 0 if passed == total and total > 0 else 1
 
 

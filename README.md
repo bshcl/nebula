@@ -163,6 +163,8 @@ pytest
 python evals/run_eval.py
 ```
 
+`python evals/run_eval.py --out var/eval-last.json` writes the same run as JSON. Diff it against an older file with `--diff` to see which case flipped. See `nebula-api/README.md`.
+
 CI on `nebula-api/**` runs the same three steps.
 
 ## Development status
