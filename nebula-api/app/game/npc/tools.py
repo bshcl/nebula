@@ -4,6 +4,7 @@ from typing import Annotated
 from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedState
 
+from app.agentkit.guardrails import ArgumentSpec, check_tool_call
 from app.agentkit.integrations import mcp_manager
 from app.agentkit.observability import get_trace
 from app.agentkit.retrieval import rag_engine
@@ -16,6 +17,48 @@ from app.game.quests.guards import claim_reject_reason
 from app.infra.database import SessionLocal
 
 logger = get_logger(__name__)
+
+SOUL_NODE = "soul"
+WORLD_NODE = "world"
+
+# Public model arguments only. Injected session state is not part of the shape.
+NODE_TOOL_ARGUMENTS: dict[str, dict[str, tuple[ArgumentSpec, ...]]] = {
+    SOUL_NODE: {
+        "get_quest_status": (ArgumentSpec("quest_id", required=False),),
+        "mark_quest_ready": (ArgumentSpec("quest_id", required=False),),
+        "claim_quest_reward": (ArgumentSpec("quest_id", required=False),),
+        "send_gift": (ArgumentSpec("item_name"),),
+    },
+    WORLD_NODE: {
+        "search_nearby_places": (ArgumentSpec("query"),),
+        "get_place_details": (ArgumentSpec("place_id"),),
+        "get_weather_mock": (ArgumentSpec("city"),),
+        "query_nebula_lore": (ArgumentSpec("query"),),
+    },
+}
+
+
+def authorize_tool_call(
+    node: str,
+    tool_name: str,
+    arguments: dict[str, object],
+) -> str | None:
+    """Return a reason code when this node must not run the call. Records the trace."""
+    specs = NODE_TOOL_ARGUMENTS.get(node)
+    reason = "tool_not_allowed" if specs is None else check_tool_call(specs, tool_name, arguments)
+    if reason is None:
+        return None
+    trace = get_trace()
+    if trace is not None:
+        trace.mark_tool_rejection(tool_name, reason)
+    return reason
+
+
+def _blocked_tool_message(node: str, tool_name: str, arguments: dict[str, object]) -> str | None:
+    reason = authorize_tool_call(node, tool_name, arguments)
+    if reason is None:
+        return None
+    return f"System message: Tool rejected — {reason}."
 
 
 class QuestTools:
@@ -31,6 +74,10 @@ class QuestTools:
         Check the player's quest status (not_started / active / ready_to_claim / claimed).
         Call when the player asks about quests, rewards, or progress.
         """
+        blocked = _blocked_tool_message(SOUL_NODE, "get_quest_status", {"quest_id": quest_id})
+        if blocked:
+            return blocked
+
         session_id = (state or {}).get("session_id") or ""
         if not session_id:
             return "System message: Missing session_id in state."
@@ -56,6 +103,9 @@ class QuestTools:
         confirmed first rendezvous after the landing clearly.
         Do NOT claim rewards here — only change status.
         """
+        blocked = _blocked_tool_message(SOUL_NODE, "mark_quest_ready", {"quest_id": quest_id})
+        if blocked:
+            return blocked
 
         session_id = (state or {}).get("session_id") or ""
         if not session_id:
@@ -81,6 +131,9 @@ class QuestTools:
         Server grants item + large mood boost. Agent only chooses WHEN to call.
         After success, include [[GIFT:item_id]] in the player-facing reply.
         """
+        blocked = _blocked_tool_message(SOUL_NODE, "claim_quest_reward", {"quest_id": quest_id})
+        if blocked:
+            return blocked
 
         session_id = (state or {}).get("session_id") or ""
         if not session_id:
@@ -122,6 +175,10 @@ class MapTools:
         Args:
             query: Search keywords, e.g. 'ramen near shibuya Station'
         """
+        blocked = _blocked_tool_message(WORLD_NODE, "search_nearby_places", {"query": query})
+        if blocked:
+            return blocked
+
         logger.debug("MCP map search: query=%s", query)
 
         if not mcp_manager.mcp_session:
@@ -142,6 +199,10 @@ class MapTools:
         Args:
             place_id: Unique place identifier from search results.
         """
+        blocked = _blocked_tool_message(WORLD_NODE, "get_place_details", {"place_id": place_id})
+        if blocked:
+            return blocked
+
         if not mcp_manager.mcp_session:
             return "Error: Maps service is not ready."
 
@@ -168,6 +229,10 @@ class InteractionTools:
             item_name: Short snake_case or english id for the gift, e.g. star_candy.
             state: Injected state containing session_id.
         """
+        blocked = _blocked_tool_message(SOUL_NODE, "send_gift", {"item_name": item_name})
+        if blocked:
+            return blocked
+
         session_id = (state or {}).get("session_id") or ""
         if not session_id:
             return "System message: Missing session_id in state."
@@ -216,6 +281,10 @@ class WorldKnowledgeTools:
         Args:
             query: Topic or question to look up in the knowledge base.
         """
+        blocked = _blocked_tool_message(WORLD_NODE, "query_nebula_lore", {"query": query})
+        if blocked:
+            return blocked
+
         retriever = rag_engine.get_retriever()
         if not retriever:
             return "Error: RAG engine is not initialized. Please try again later."
@@ -241,4 +310,8 @@ class EnvironmentTools:
         Args:
             city: City name.
         """
+        blocked = _blocked_tool_message(WORLD_NODE, "get_weather_mock", {"city": city})
+        if blocked:
+            return blocked
+
         return f"Mock weather in {city}: sunny with a temperature of 22°C.Comfort index: excellent."
