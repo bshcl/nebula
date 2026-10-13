@@ -27,3 +27,19 @@ cases:
       reply: "Hi [[ANIM:DANCE]] there"
     expect:
       reason: removed_anim:DANCE
+
+  - id: reject_unknown_gift_tag
+    description: A well-formed gift tag whose id is not in the catalog is stripped
+    mode: output_reject
+    input:
+      reply: "Here [[GIFT:legendary_blade]]"
+    expect:
+      reason: removed_unknown_gift:legendary_blade
+
+  - id: reject_inventory_count_claim
+    description: A sentence that states a bag count is stripped
+    mode: output_reject
+    input:
+      reply: "You have 3 star_candy in your bag."
+    expect:
+      reason: removed_inventory_claim

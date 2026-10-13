@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.agentkit.guardrails import sanitize_npc_reply, screen_user_input
 from app.agentkit.observability import clear_trace, start_trace
 from app.config import get_logger
+from app.game.inventory.catalog import list_item_ids
 from app.game.memory import tasks as memory_tasks
 from app.game.memory.service import MemoryService
 from app.game.npc.agents import soul_llm_cloud as llm
@@ -101,7 +102,10 @@ async def graph_streamer(
 
         yield f"[[MOOD:{final_mood}]]"
 
-        guarded = sanitize_npc_reply(full_response)
+        guarded = sanitize_npc_reply(
+            full_response,
+            allowed_gift_ids=list_item_ids(db),
+        )
         if guarded.changed:
             for name in guarded.violations:
                 trace.mark_guardrail_violation(name)
