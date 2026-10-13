@@ -1,11 +1,11 @@
 """Tests for NPC reply output guardrails."""
 
-from app.agentkit.guardrails import sanitize_npc_reply
+from app.agentkit.guardrails import OfflineTagFilter, sanitize_npc_reply
 
 
-def test_keeps_allowed_anim_and_offline() -> None:
+def test_keeps_allowed_anim_and_offline_on_a_real_fallback() -> None:
     raw = "[[ANIM:WAVE]] 哼。 [[SYSTEM:OFFLINE]]"
-    result = sanitize_npc_reply(raw)
+    result = sanitize_npc_reply(raw, allow_offline=True)
     assert result.text == "[[ANIM:WAVE]] 哼。 [[SYSTEM:OFFLINE]]"
     assert result.violations == []
     assert result.changed is False
@@ -61,3 +61,18 @@ def test_plain_number_is_not_an_inventory_claim() -> None:
     result = sanitize_npc_reply(raw)
     assert result.violations == []
     assert result.text == raw
+
+
+def test_strips_offline_tag_unless_the_turn_really_fell_back() -> None:
+    raw = "Hello. [[SYSTEM:OFFLINE]]"
+    result = sanitize_npc_reply(raw)
+    assert "[[SYSTEM:OFFLINE]]" not in result.text
+    assert result.text == "Hello."
+    assert "removed_offline_tag" in result.violations
+
+
+def test_offline_filter_holds_a_tag_split_across_tokens() -> None:
+    stream = OfflineTagFilter()
+    assert stream.feed("Hello [[SYS") == "Hello "
+    assert stream.feed("TEM:OFFLINE]] there") == " there"
+    assert stream.finish() == ""

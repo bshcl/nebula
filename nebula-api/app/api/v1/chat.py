@@ -8,7 +8,12 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
 from sqlalchemy.orm import Session
 
-from app.agentkit.guardrails import sanitize_npc_reply, screen_user_input
+from app.agentkit.guardrails import (
+    OFFLINE_TAG,
+    OfflineTagFilter,
+    sanitize_npc_reply,
+    screen_user_input,
+)
 from app.agentkit.observability import clear_trace, start_trace
 from app.config import get_logger
 from app.game.inventory.catalog import list_item_ids
@@ -76,6 +81,7 @@ async def graph_streamer(
 
         full_response = ""
         final_mood = current_mood
+        offline_filter = OfflineTagFilter()
 
         async for mode, chunk in npc_brain.astream(
             initial_state,
@@ -97,14 +103,28 @@ async def graph_streamer(
                 if not token:
                     continue
 
-                full_response += token
-                yield token
+                visible = offline_filter.feed(token)
+                if not visible:
+                    continue
+
+                full_response += visible
+                yield visible
+
+        tail = offline_filter.finish()
+        if tail:
+            full_response += tail
+            yield tail
+
+        offline = "soul_local_ollama" in trace.fallbacks
+        if offline:
+            yield OFFLINE_TAG
 
         yield f"[[MOOD:{final_mood}]]"
 
         guarded = sanitize_npc_reply(
             full_response,
             allowed_gift_ids=list_item_ids(db),
+            allow_offline=offline,
         )
         if guarded.changed:
             for name in guarded.violations:
